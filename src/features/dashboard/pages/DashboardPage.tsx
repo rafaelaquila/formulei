@@ -46,11 +46,12 @@ export function DashboardPage() {
     void load()
   }, [])
 
-  const filteredAlerts = useMemo(() => {
+  const filteredHistory = useMemo(() => {
     if (!insights) return []
-    if (!search.trim()) return insights.alertas
-    return insights.alertas.filter((alerta) =>
-      alerta.toLowerCase().includes(search.toLowerCase()),
+    if (!search.trim()) return insights.historico
+    const q = search.toLowerCase()
+    return insights.historico.filter((row) =>
+      Object.values(row).some((value) => String(value).toLowerCase().includes(q)),
     )
   }, [insights, search])
 
@@ -93,8 +94,8 @@ export function DashboardPage() {
             <Card title="Sistemas Monitorados">
               <p className="kpi">{insights.sistemasMaisUtilizados.length}</p>
             </Card>
-            <Card title="Alertas Ativos">
-              <p className="kpi">{insights.alertas.length}</p>
+            <Card title="Registros no Histórico">
+              <p className="kpi">{insights.historico.length}</p>
             </Card>
           </div>
 
@@ -146,11 +147,11 @@ export function DashboardPage() {
             </ResponsiveContainer>
           </Card>
 
-          <Card title="Alertas inteligentes">
+          <Card title="Histórico de cadastros">
             <div className="field">
               <span className="field-label">Busca global</span>
               <input
-                placeholder="Filtrar alertas por palavra-chave"
+                placeholder="Filtrar histórico por qualquer campo"
                 value={search}
                 onChange={(event) => setSearch(event.target.value)}
               />
@@ -160,21 +161,54 @@ export function DashboardPage() {
               className="btn btn-outlined"
               onClick={() =>
                 exportCsv(
-                  'alertas-formulei.csv',
-                  filteredAlerts.map((alerta) => ({ alerta })),
+                  'historico-formulei.csv',
+                  filteredHistory.map((row) => ({ ...row } as Record<string, string | number>)),
                 )
               }
             >
               Exportar CSV
             </button>
-            {filteredAlerts.length === 0 ? (
-              <p>Nenhum alerta encontrado para o filtro atual.</p>
+            {filteredHistory.length === 0 ? (
+              <p>Nenhum registro encontrado para o filtro atual.</p>
             ) : (
-              <ul className="alerts">
-                {filteredAlerts.map((alerta) => (
-                  <li key={alerta}>{alerta}</li>
-                ))}
-              </ul>
+              <div className="table-wrapper">
+                <table className="table-simple">
+                  <thead>
+                    <tr>
+                      <th>Data</th>
+                      <th>Setor</th>
+                      <th>Gestor</th>
+                      <th>E-mail</th>
+                      <th>Colaborador</th>
+                      <th>Departamento</th>
+                      <th>Vínculo</th>
+                      <th>Sistema</th>
+                      <th>Unidade</th>
+                      <th>Tipos de acesso</th>
+                      <th>Qunatidade BI</th>
+                      <th>Observações</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {filteredHistory.map((row, index) => (
+                      <tr key={`${row.colaborador}-${row.sistema}-${index}`}>
+                        <td>{row.dataPreenchimento}</td>
+                        <td>{row.setor}</td>
+                        <td>{row.gestorResponsavel}</td>
+                        <td>{row.emailRespondente}</td>
+                        <td>{row.colaborador}</td>
+                        <td>{row.departamento}</td>
+                        <td>{row.tipoVinculo}</td>
+                        <td>{row.sistema}</td>
+                        <td>{row.unidadeMonitoramento}</td>
+                        <td>{row.tiposAcesso}</td>
+                        <td>{row.detalhamento}</td>
+                        <td>{row.observacoesSistema}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
             )}
           </Card>
           </section>

@@ -49,7 +49,22 @@ export interface DashboardInsight {
   sistemasMaisUtilizados: { sistema: string; total: number }[]
   acessosPorSetor: { setor: string; total: number }[]
   tiposAcessoComuns: { tipo: string; total: number }[]
-  alertas: string[]
+  historico: DashboardHistoryRow[]
+}
+
+export interface DashboardHistoryRow {
+  dataPreenchimento: string
+  setor: string
+  gestorResponsavel: string
+  emailRespondente: string
+  colaborador: string
+  departamento: string
+  tipoVinculo: string
+  sistema: string
+  unidadeMonitoramento: string
+  tiposAcesso: string
+  detalhamento: string
+  observacoesSistema: string
 }
 
 export interface CollaboratorDirectoryEntry {

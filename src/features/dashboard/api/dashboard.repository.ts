@@ -1,6 +1,6 @@
 import { readLocalSubmissions } from '@/features/audit/storage/local-submissions'
 import { supabase } from '@/lib/supabase/client'
-import type { AuditFormData, DashboardInsight } from '@/shared/types/audit'
+import type { AuditFormData, DashboardHistoryRow, DashboardInsight } from '@/shared/types/audit'
 
 export async function getDashboardInsights(): Promise<DashboardInsight> {
   const submissions = readLocalSubmissions()
@@ -14,7 +14,7 @@ export async function getDashboardInsights(): Promise<DashboardInsight> {
     .select('setor')
   const { data: accessData, error: accessError } = await supabase
     .from('acessos')
-    .select('utiliza, tipos_acesso, observacoes, status, ajuste, sistemas(nome)')
+    .select('*, sistemas(nome), formularios(setor, gestor, data_preenchimento, email_respondente), colaboradores(nome, departamento, cargo, tipo_vinculo)')
 
   const tableNotFound =
     formsError?.code === 'PGRST205' || accessError?.code === 'PGRST205'
@@ -31,38 +31,54 @@ export async function getDashboardInsights(): Promise<DashboardInsight> {
 
   const sistemaMap: Record<string, number> = {}
   const tipoMap: Record<string, number> = {}
-  const alertas: string[] = []
+  const historico: DashboardHistoryRow[] = []
 
   for (const acesso of accessData) {
     const sistemaNome =
       (acesso.sistemas as { nome?: string } | null)?.nome ?? 'Não identificado'
     sistemaMap[sistemaNome] = (sistemaMap[sistemaNome] ?? 0) + 1
 
-    for (const tipo of (acesso.tipos_acesso as string[] | null) ?? []) {
+    const tipos = (acesso.tipos_acesso as string[] | null) ?? []
+    for (const tipo of tipos) {
       tipoMap[tipo] = (tipoMap[tipo] ?? 0) + 1
     }
+    const form = acesso.formularios as
+      | {
+          setor?: string
+          gestor?: string
+          data_preenchimento?: string
+          email_respondente?: string
+        }
+      | null
+    const colab = acesso.colaboradores as
+      | {
+          nome?: string
+          departamento?: string
+          cargo?: string
+          tipo_vinculo?: string
+        }
+      | null
+    const dataRaw = String(form?.data_preenchimento ?? '').trim()
 
-    if (
-      ((acesso.tipos_acesso as string[] | null) ?? []).includes('Administração') &&
-      !acesso.observacoes
-    ) {
-      alertas.push(`Acesso administrativo sem observações em ${sistemaNome}.`)
-    }
-
-    if (acesso.utiliza === false) {
-      alertas.push(`Colaborador com acesso marcado como não utiliza em ${sistemaNome}.`)
-    }
-
-    if (!acesso.observacoes) {
-      alertas.push(`Acesso sem observações preenchidas em ${sistemaNome}.`)
-    }
-
-    if (
-      ((acesso.tipos_acesso as string[] | null) ?? []).length > 5 ||
-      acesso.status === 'Não adequado'
-    ) {
-      alertas.push(`Sistema ${sistemaNome} com excesso/risco de permissões.`)
-    }
+    historico.push({
+      dataPreenchimento: dataRaw || 'Não informado',
+      setor: String(form?.setor ?? 'Não informado').trim(),
+      gestorResponsavel: String(form?.gestor ?? 'Não informado').trim(),
+      emailRespondente: String(form?.email_respondente ?? 'Não informado').trim(),
+      colaborador: String(colab?.nome ?? 'Não informado').trim(),
+      departamento: String(colab?.departamento ?? colab?.cargo ?? 'Não informado').trim(),
+      tipoVinculo: String(colab?.tipo_vinculo ?? 'Não informado').trim(),
+      sistema: sistemaNome,
+      unidadeMonitoramento: extractMonitoringUnit(String(acesso.detalhamento ?? '')),
+      tiposAcesso: tipos.length ? tipos.join(' | ') : 'Não informado',
+      detalhamento:
+        sistemaNome === 'Portal BI'
+          ? `${countPortalBiFromDetalhamento(
+              String(acesso.detalhamento ?? ''),
+            )}`
+          : String(acesso.detalhamento ?? 'Não informado').trim(),
+      observacoesSistema: String(acesso.observacoes ?? acesso.rotina ?? '').trim() || 'Não informado',
+    })
   }
 
   return {
@@ -70,7 +86,7 @@ export async function getDashboardInsights(): Promise<DashboardInsight> {
     sistemasMaisUtilizados: toSortedList(sistemaMap, 'sistema'),
     acessosPorSetor: toSortedList(acessosPorSetorMap, 'setor'),
     tiposAcessoComuns: toSortedList(tipoMap, 'tipo'),
-    alertas: uniqueMessages(alertas),
+    historico,
   }
 }
 
@@ -86,15 +102,11 @@ function toSortedList<T extends 'sistema' | 'setor' | 'tipo'>(
     .slice(0, 6)
 }
 
-function uniqueMessages(messages: string[]) {
-  return Array.from(new Set(messages))
-}
-
 function buildInsightsFromPayloads(payloads: AuditFormData[]): DashboardInsight {
   const setorMap: Record<string, number> = {}
   const sistemaMap: Record<string, number> = {}
   const tipoMap: Record<string, number> = {}
-  const alertas: string[] = []
+  const historico: DashboardHistoryRow[] = []
 
   payloads.forEach((payload) => {
     setorMap[payload.setor] = (setorMap[payload.setor] ?? 0) + 1
@@ -105,27 +117,23 @@ function buildInsightsFromPayloads(payloads: AuditFormData[]): DashboardInsight 
         sistema.tipoAcesso.forEach((tipo) => {
           tipoMap[tipo] = (tipoMap[tipo] ?? 0) + 1
         })
-
-        if (
-          sistema.tipoAcesso.includes('Administração') &&
-          !sistema.observacoesSistema.trim()
-        ) {
-          alertas.push(
-            `Usuário com acesso administrativo sem observações (${sistema.sistema}).`,
-          )
-        }
-
-        if (sistema.utilizaSistema === 'Não' && sistema.tipoAcesso.length > 0) {
-          alertas.push(`Usuário possui acesso mas não utiliza (${sistema.sistema}).`)
-        }
-
-        if (!sistema.observacoesSistema.trim()) {
-          alertas.push(`Acesso sem observações (${sistema.sistema}).`)
-        }
-
-        if (sistema.tipoAcesso.length > 5) {
-          alertas.push(`Sistema com excesso de permissões (${sistema.sistema}).`)
-        }
+        historico.push({
+          dataPreenchimento: payload.dataPreenchimento || 'Não informado',
+          setor: payload.setor || 'Não informado',
+          gestorResponsavel: payload.gestorResponsavel || 'Não informado',
+          emailRespondente: payload.emailRespondente || 'Não informado',
+          colaborador: colaborador.nome || 'Não informado',
+          departamento: colaborador.departamento || 'Não informado',
+          tipoVinculo: payload.tipoVinculo || 'Não informado',
+          sistema: sistema.sistema || 'Não informado',
+          unidadeMonitoramento: sistema.cameraMonitoringUnit ?? 'Não se aplica',
+          tiposAcesso: sistema.tipoAcesso.length ? sistema.tipoAcesso.join(' | ') : 'Não informado',
+          detalhamento:
+            sistema.sistema === 'Portal BI'
+              ? `${sistema.portalBiReportIds?.length ?? 0}`
+              : buildLocalDetalhamento(sistema),
+          observacoesSistema: sistema.observacoesSistema?.trim() || 'Não informado',
+        })
       })
     })
   })
@@ -135,6 +143,35 @@ function buildInsightsFromPayloads(payloads: AuditFormData[]): DashboardInsight 
     sistemasMaisUtilizados: toSortedList(sistemaMap, 'sistema'),
     acessosPorSetor: toSortedList(setorMap, 'setor'),
     tiposAcessoComuns: toSortedList(tipoMap, 'tipo'),
-    alertas: uniqueMessages(alertas),
+    historico,
   }
+}
+
+function extractMonitoringUnit(detalhamento: string): string {
+  const match = detalhamento.match(/Unidade:\s*([^\n]+)/i)
+  return match?.[1]?.trim() || 'Não se aplica'
+}
+
+function buildLocalDetalhamento(sistema: AuditFormData['colaboradores'][number]['sistemas'][number]) {
+  if (sistema.sistema === 'Portal BI') {
+    return (sistema.portalBiReportIds ?? []).join(' | ') || 'Não informado'
+  }
+  if (sistema.sistema === 'Monitoramento Intelbras') {
+    return (sistema.camerasConsultaIds ?? []).join(' | ') || 'Não informado'
+  }
+  const linhas = sistema.tipoAcesso
+    .map((tipo) => {
+      const obs = sistema.observacoesPorTipoAcesso[tipo]?.trim()
+      return obs ? `${tipo}: ${obs}` : null
+    })
+    .filter((item): item is string => Boolean(item))
+  return linhas.join('\n') || 'Não informado'
+}
+
+function countPortalBiFromDetalhamento(detalhamento: string): number {
+  const items = detalhamento
+    .split('\n')
+    .map((line) => line.trim())
+    .filter((line) => line.length > 0 && !line.toLowerCase().startsWith('observações adicionais'))
+  return items.length
 }
