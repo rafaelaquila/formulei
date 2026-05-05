@@ -485,6 +485,12 @@ textarea::placeholder {
   border-color: rgba(51, 65, 85, 0.2);
 }
 
+.bi-status-em-andamento {
+  background: rgba(234, 179, 8, 0.14);
+  color: #a16207;
+  border-color: rgba(202, 138, 4, 0.35);
+}
+
 .bi-status-de-acordo {
   background: rgba(22, 163, 74, 0.12);
   color: #166534;

@@ -13,6 +13,9 @@ import { Card, Field } from '@/shared/ui/ui'
 import type { CameraMonitoringPermissionRow } from '@/shared/types/audit'
 
 type CameraItemReviewStatus = CameraMonitoringPermissionRow['parecerDiretoria']
+
+type CameraRowAggregateStatus = 'Em andamento' | 'De acordo' | 'Não de acordo'
+
 interface CameraItemReview {
   status: CameraItemReviewStatus
   observacao: string
@@ -47,11 +50,24 @@ function writeCameraItemReviews(data: CameraItemReviewMap) {
   if (typeof window === 'undefined') return
   window.localStorage.setItem(CAMERA_ITEM_REVIEW_STORAGE_KEY, JSON.stringify(data))
 }
-function toParecerFilter(value: string): '' | CameraItemReviewStatus {
-  if (value === '' || value === 'Pendente' || value === 'De acordo' || value === 'Não de acordo') {
+function toParecerFilter(value: string): '' | CameraRowAggregateStatus {
+  if (
+    value === '' ||
+    value === 'Em andamento' ||
+    value === 'De acordo' ||
+    value === 'Não de acordo'
+  ) {
     return value
   }
   return ''
+}
+
+function aggregateToPersistedParecer(
+  aggregate: CameraRowAggregateStatus,
+): CameraMonitoringPermissionRow['parecerDiretoria'] {
+  if (aggregate === 'De acordo') return 'De acordo'
+  if (aggregate === 'Não de acordo') return 'Não de acordo'
+  return 'Pendente'
 }
 
 export function CameraMonitoringPermissionsPage() {
@@ -60,7 +76,7 @@ export function CameraMonitoringPermissionsPage() {
   const [setorFilter, setSetorFilter] = useState('')
   const [nomeFilter, setNomeFilter] = useState('')
   const [cameraFilter, setCameraFilter] = useState('')
-  const [parecerFilter, setParecerFilter] = useState<'' | CameraItemReviewStatus>('')
+  const [parecerFilter, setParecerFilter] = useState<'' | CameraRowAggregateStatus>('')
   const [savingRowId, setSavingRowId] = useState<string | null>(null)
   const [selectedRow, setSelectedRow] = useState<CameraMonitoringPermissionRow | null>(null)
   const [itemReviews, setItemReviews] = useState<CameraItemReviewMap>({})
@@ -96,18 +112,29 @@ export function CameraMonitoringPermissionsPage() {
   function getRowSummary(row: CameraMonitoringPermissionRow, source: CameraItemReviewMap) {
     const items = parseCameraItems(row.acessoCamera)
     if (items.length === 0) {
-      return { status: 'Pendente' as CameraItemReviewStatus, total: 0, deAcordo: 0, naoDeAcordo: 0 }
+      return {
+        status: 'Em andamento' as CameraRowAggregateStatus,
+        total: 0,
+        deAcordo: 0,
+        naoDeAcordo: 0,
+      }
     }
     let deAcordo = 0
     let naoDeAcordo = 0
     for (const item of items) {
       const status = source[reviewKey(row.id, item)]?.status ?? 'Pendente'
       if (status === 'De acordo') deAcordo += 1
-      if (status === 'Não de acordo') naoDeAcordo += 1
+      else if (status === 'Não de acordo') naoDeAcordo += 1
     }
-    const status: CameraItemReviewStatus =
-      naoDeAcordo > 0 ? 'Não de acordo' : deAcordo === items.length ? 'De acordo' : 'Pendente'
-    return { status, total: items.length, deAcordo, naoDeAcordo }
+    let rowStatus: CameraRowAggregateStatus
+    if (deAcordo === items.length) {
+      rowStatus = 'De acordo'
+    } else if (naoDeAcordo === items.length) {
+      rowStatus = 'Não de acordo'
+    } else {
+      rowStatus = 'Em andamento'
+    }
+    return { status: rowStatus, total: items.length, deAcordo, naoDeAcordo }
   }
 
   const rowSummaries = useMemo(() => {
@@ -157,10 +184,10 @@ export function CameraMonitoringPermissionsPage() {
     }
   }
 
-  function reviewStatusClass(status: CameraItemReviewStatus) {
+  function reviewStatusClass(status: CameraRowAggregateStatus) {
     if (status === 'De acordo') return 'bi-status-de-acordo'
     if (status === 'Não de acordo') return 'bi-status-nao-de-acordo'
-    return 'bi-status-pendente'
+    return 'bi-status-em-andamento'
   }
 
   function updateCameraItem(rowId: string, cameraItem: string, patch: Partial<CameraItemReview>) {
@@ -192,7 +219,7 @@ export function CameraMonitoringPermissionsPage() {
       .filter((line): line is string => Boolean(line))
       .join('\n')
     await handleUpdateReview(selectedRow.id, {
-      parecerDiretoria: summary.status,
+      parecerDiretoria: aggregateToPersistedParecer(summary.status),
       observacaoDiretoria: observacoes,
     })
     setSelectedRow(null)
@@ -272,7 +299,7 @@ export function CameraMonitoringPermissionsPage() {
                   onChange={(event) => setParecerFilter(toParecerFilter(event.target.value))}
                 >
                   <option value="">Todos</option>
-                  <option value="Pendente">Pendente</option>
+                  <option value="Em andamento">Em andamento</option>
                   <option value="De acordo">De acordo</option>
                   <option value="Não de acordo">Não de acordo</option>
                 </select>
@@ -312,11 +339,11 @@ export function CameraMonitoringPermissionsPage() {
                               Validar câmeras
                             </button>
                             <span
-                              className={`bi-status-tag ${reviewStatusClass(rowSummaries.get(row.id)?.status ?? 'Pendente')}`}
+                              className={`bi-status-tag ${reviewStatusClass(rowSummaries.get(row.id)?.status ?? 'Em andamento')}`}
                             >
                               {savingRowId === row.id
                                 ? 'Salvando...'
-                                : rowSummaries.get(row.id)?.status ?? 'Pendente'}
+                                : rowSummaries.get(row.id)?.status ?? 'Em andamento'}
                             </span>
                             <span className="bi-review-progress">
                               {`${rowSummaries.get(row.id)?.deAcordo ?? 0}/${rowSummaries.get(row.id)?.total ?? 0} de acordo`}

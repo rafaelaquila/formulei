@@ -14,6 +14,9 @@ import type { PortalBiPermissionRow } from '@/shared/types/audit'
 
 type BiItemReviewStatus = PortalBiPermissionRow['parecerDiretoria']
 
+/** Resumo da linha: só fecha quando todos os BIs têm o mesmo parecer final. */
+type BiRowAggregateStatus = 'Em andamento' | 'De acordo' | 'Não de acordo'
+
 interface BiItemReview {
   status: BiItemReviewStatus
   observacao: string
@@ -50,11 +53,24 @@ function writeBiItemReviews(data: BiItemReviewMap) {
   window.localStorage.setItem(BI_ITEM_REVIEW_STORAGE_KEY, JSON.stringify(data))
 }
 
-function toParecerFilter(value: string): '' | BiItemReviewStatus {
-  if (value === '' || value === 'Pendente' || value === 'De acordo' || value === 'Não de acordo') {
+function toParecerFilter(value: string): '' | BiRowAggregateStatus {
+  if (
+    value === '' ||
+    value === 'Em andamento' ||
+    value === 'De acordo' ||
+    value === 'Não de acordo'
+  ) {
     return value
   }
   return ''
+}
+
+function aggregateToPersistedParecer(
+  aggregate: BiRowAggregateStatus,
+): PortalBiPermissionRow['parecerDiretoria'] {
+  if (aggregate === 'De acordo') return 'De acordo'
+  if (aggregate === 'Não de acordo') return 'Não de acordo'
+  return 'Pendente'
 }
 
 export function PortalBiPermissionsPage() {
@@ -63,7 +79,7 @@ export function PortalBiPermissionsPage() {
   const [setorFilter, setSetorFilter] = useState('')
   const [nomeFilter, setNomeFilter] = useState('')
   const [acessoFilter, setAcessoFilter] = useState('')
-  const [parecerFilter, setParecerFilter] = useState<'' | BiItemReviewStatus>('')
+  const [parecerFilter, setParecerFilter] = useState<'' | BiRowAggregateStatus>('')
   const [savingRowId, setSavingRowId] = useState<string | null>(null)
   const [selectedRow, setSelectedRow] = useState<PortalBiPermissionRow | null>(null)
   const [itemReviews, setItemReviews] = useState<BiItemReviewMap>({})
@@ -103,17 +119,28 @@ export function PortalBiPermissionsPage() {
   function getRowSummary(row: PortalBiPermissionRow, source: BiItemReviewMap) {
     const items = parseBiItems(row.acessoBi)
     if (items.length === 0) {
-      return { status: 'Pendente' as BiItemReviewStatus, total: 0, deAcordo: 0, naoDeAcordo: 0 }
+      return {
+        status: 'Em andamento' as BiRowAggregateStatus,
+        total: 0,
+        deAcordo: 0,
+        naoDeAcordo: 0,
+      }
     }
     let deAcordo = 0
     let naoDeAcordo = 0
     for (const item of items) {
       const current = source[reviewKey(row.id, item)]?.status ?? 'Pendente'
       if (current === 'De acordo') deAcordo += 1
-      if (current === 'Não de acordo') naoDeAcordo += 1
+      else if (current === 'Não de acordo') naoDeAcordo += 1
     }
-    const status: BiItemReviewStatus =
-      naoDeAcordo > 0 ? 'Não de acordo' : deAcordo === items.length ? 'De acordo' : 'Pendente'
+    let status: BiRowAggregateStatus
+    if (deAcordo === items.length) {
+      status = 'De acordo'
+    } else if (naoDeAcordo === items.length) {
+      status = 'Não de acordo'
+    } else {
+      status = 'Em andamento'
+    }
     return { status, total: items.length, deAcordo, naoDeAcordo }
   }
 
@@ -164,10 +191,10 @@ export function PortalBiPermissionsPage() {
     }
   }
 
-  function reviewStatusClass(status: BiItemReviewStatus) {
+  function reviewStatusClass(status: BiRowAggregateStatus) {
     if (status === 'De acordo') return 'bi-status-de-acordo'
     if (status === 'Não de acordo') return 'bi-status-nao-de-acordo'
-    return 'bi-status-pendente'
+    return 'bi-status-em-andamento'
   }
 
   function updateBiItem(rowId: string, biItem: string, patch: Partial<BiItemReview>) {
@@ -199,7 +226,7 @@ export function PortalBiPermissionsPage() {
       .filter((line): line is string => Boolean(line))
       .join('\n')
     await handleUpdateReview(selectedRow.id, {
-      parecerDiretoria: summary.status,
+      parecerDiretoria: aggregateToPersistedParecer(summary.status),
       observacaoDiretoria: observacoes,
     })
     setSelectedRow(null)
@@ -282,7 +309,7 @@ export function PortalBiPermissionsPage() {
                   onChange={(event) => setParecerFilter(toParecerFilter(event.target.value))}
                 >
                   <option value="">Todos</option>
-                  <option value="Pendente">Pendente</option>
+                  <option value="Em andamento">Em andamento</option>
                   <option value="De acordo">De acordo</option>
                   <option value="Não de acordo">Não de acordo</option>
                 </select>
@@ -322,11 +349,11 @@ export function PortalBiPermissionsPage() {
                               Validar BIs
                             </button>
                             <span
-                              className={`bi-status-tag ${reviewStatusClass(rowSummaries.get(row.id)?.status ?? 'Pendente')}`}
+                              className={`bi-status-tag ${reviewStatusClass(rowSummaries.get(row.id)?.status ?? 'Em andamento')}`}
                             >
                               {savingRowId === row.id
                                 ? 'Salvando...'
-                                : rowSummaries.get(row.id)?.status ?? 'Pendente'}
+                                : rowSummaries.get(row.id)?.status ?? 'Em andamento'}
                             </span>
                             <span className="bi-review-progress">
                               {`${rowSummaries.get(row.id)?.deAcordo ?? 0}/${rowSummaries.get(row.id)?.total ?? 0} de acordo`}
