@@ -131,6 +131,10 @@ body {
   gap: 6px;
 }
 
+.field-span-full {
+  grid-column: 1 / -1;
+}
+
 .field-label {
   font-size: var(--text-sm);
   color: var(--neutral);

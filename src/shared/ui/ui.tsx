@@ -36,13 +36,14 @@ interface FieldProps {
   label: string
   /** Omitido quando o filho é um componente composto (ex.: combobox). */
   htmlFor?: string
+  className?: string
   children: ReactNode
 }
 
-export function Field({ label, htmlFor, children }: FieldProps) {
+export function Field({ label, htmlFor, className = '', children }: FieldProps) {
   if (htmlFor) {
     return (
-      <label className="field" htmlFor={htmlFor}>
+      <label className={`field ${className}`.trim()} htmlFor={htmlFor}>
         <span className="field-label">{label}</span>
         {children}
       </label>
@@ -50,7 +51,7 @@ export function Field({ label, htmlFor, children }: FieldProps) {
   }
 
   return (
-    <div className="field">
+    <div className={`field ${className}`.trim()}>
       <span className="field-label">{label}</span>
       {children}
     </div>

@@ -12,6 +12,24 @@ import { Button, Card, Field } from '@/shared/ui/ui'
 import type { AuditFormData } from '@/shared/types/audit'
 import { useEffect, useState } from 'react'
 
+const JOURNEY_SYSTEM_NAME = 'Jorney'
+
+function isJuridicoSetor(setor: string): boolean {
+  const normalized = setor
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .trim()
+    .toLowerCase()
+  return normalized === 'juridico'
+}
+
+function normalizeText(value: string): string {
+  return value
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .trim()
+    .toLowerCase()
+}
 
 export function AuditFormPage() {
   const {
@@ -60,6 +78,15 @@ export function AuditFormPage() {
     form.colaboradores.find((item) => item.id === activeCollaboratorId) ??
     form.colaboradores[0] ??
     null
+  const systemSuggestions = isJuridicoSetor(form.setor)
+    ? SYSTEM_SUGGESTIONS
+    : SYSTEM_SUGGESTIONS.filter((system) => system !== JOURNEY_SYSTEM_NAME)
+  const filteredCollaboratorOptions = !form.setor.trim()
+    ? collaboratorOptions
+    : collaboratorOptions.filter(
+        (option) =>
+          option.description && normalizeText(option.description) === normalizeText(form.setor),
+      )
 
   return (
     <main className="page">
@@ -78,7 +105,38 @@ export function AuditFormPage() {
               <select
                 id="setor"
                 value={form.setor}
-                onChange={(event) => setForm({ ...form, setor: event.target.value })}
+                onChange={(event) => {
+                  const nextSetor = event.target.value
+                  const shouldKeepJourney = isJuridicoSetor(nextSetor)
+                  const isSetorSelected = nextSetor.trim().length > 0
+                  const allowedCollaboratorNames = new Set(
+                    collaboratorOptions
+                      .filter(
+                        (option) =>
+                          !isSetorSelected ||
+                          (option.description &&
+                            normalizeText(option.description) === normalizeText(nextSetor)),
+                      )
+                      .map((option) => option.value),
+                  )
+                  setForm({
+                    ...form,
+                    setor: nextSetor,
+                    colaboradores: form.colaboradores
+                      .filter(
+                        (colaborador) =>
+                          !isSetorSelected || allowedCollaboratorNames.has(colaborador.nome),
+                      )
+                      .map((colaborador) => ({
+                        ...colaborador,
+                        sistemas: shouldKeepJourney
+                          ? colaborador.sistemas
+                          : colaborador.sistemas.filter(
+                              (sistema) => sistema.sistema !== JOURNEY_SYSTEM_NAME,
+                            ),
+                      })),
+                  })
+                }}
               >
                 <option value="">Selecione um setor</option>
                 {sectorOptions.map((sector) => (
@@ -89,7 +147,7 @@ export function AuditFormPage() {
               </select>
             </Field>
 
-            <Field label="Gestor responsável" htmlFor="gestor">
+            <Field label="Nome completo do gestor responsável" htmlFor="gestor">
               <input
                 id="gestor"
                 value={form.gestorResponsavel}
@@ -99,13 +157,13 @@ export function AuditFormPage() {
               />
             </Field>
 
-            <Field label="Nomes do colaboradores">
+            <Field label="Nomes dos colaboradores">
               <MultiCombobox
-                options={collaboratorOptions}
+                options={filteredCollaboratorOptions}
                 values={form.colaboradores.map((item) => item.nome)}
                 placeholder="Selecione os colaboradores"
                 searchPlaceholder="Buscar colaborador..."
-                emptyText="Nenhum colaborador encontrado no histórico."
+                emptyText="Nenhum colaborador encontrado para o setor selecionado."
                 onChange={setSelectedCollaboratorNames}
               />
             </Field>
@@ -115,7 +173,7 @@ export function AuditFormPage() {
                 id="email-respondente"
                 type="email"
                 autoComplete="email"
-                placeholder="nome@empresa.com.br"
+                placeholder="nome@comtrasil.com.br"
                 value={form.emailRespondente}
                 onChange={(event) =>
                   setForm({ ...form, emailRespondente: event.target.value })
@@ -123,7 +181,7 @@ export function AuditFormPage() {
               />
             </Field>
 
-            <Field label="Tipo de vínculo" htmlFor="tipo-vinculo">
+            <Field label="Tipo de vínculo" htmlFor="tipo-vinculo" className="field-span-full">
               <select
                 id="tipo-vinculo"
                 value={form.tipoVinculo}
@@ -191,7 +249,7 @@ export function AuditFormPage() {
                     </Field>
 
                     <div className="checkbox-grid">
-                      {SYSTEM_SUGGESTIONS.map((systemName) => (
+                      {systemSuggestions.map((systemName) => (
                         <label key={`${activeCollaborator.id}-${systemName}`}>
                           <input
                             type="checkbox"
