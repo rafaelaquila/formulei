@@ -65,11 +65,13 @@ export async function listCameraMonitoringPermissions(): Promise<CameraMonitorin
           ? 'Não de acordo'
           : fallback?.parecerDiretoria ?? 'Pendente'
 
+    const detalhamento = (row.detalhamento as string | null)?.trim() || 'Não informado'
     return {
       id: row.id as string,
       setor: ((row.formularios as { setor?: string } | null)?.setor ?? 'Não informado').trim(),
       colaborador: ((row.colaboradores as { nome?: string } | null)?.nome ?? 'Não informado').trim(),
-      acessoCamera: (row.detalhamento as string | null)?.trim() || 'Não informado',
+      unidade: extractUnidadeFromDetalhamento(detalhamento),
+      acessoCamera: detalhamento,
       parecerDiretoria,
       observacaoDiretoria:
         ((row.ajuste as string | null) ?? '').trim() || fallback?.observacaoDiretoria || '',
@@ -103,6 +105,11 @@ export async function updateCameraMonitoringPermissionReview(input: {
   if (error) throw error
 }
 
+function extractUnidadeFromDetalhamento(detalhamento: string): string {
+  const match = detalhamento.match(/Unidade:\s*([^\n]+)/i)
+  return match?.[1]?.trim() || 'Não informado'
+}
+
 function buildFromLocalSubmissions(localReviews: ReviewMap): CameraMonitoringPermissionRow[] {
   const rows: CameraMonitoringPermissionRow[] = []
 
@@ -120,6 +127,7 @@ function buildFromLocalSubmissions(localReviews: ReviewMap): CameraMonitoringPer
           id: `${submission.id}-${colaborador.id}-${sistema.id}`,
           setor,
           colaborador: colaborador.nome,
+          unidade,
           acessoCamera: `Unidade: ${unidade}\nCâmeras com acesso a consultar: ${cameras || 'Não informado'}`,
           parecerDiretoria:
             localReviews[`${submission.id}-${colaborador.id}-${sistema.id}`]?.parecerDiretoria ??

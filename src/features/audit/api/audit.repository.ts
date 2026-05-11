@@ -102,13 +102,17 @@ function buildDetalhamento(payload: SystemAccess): string {
   }
 
   if (isPortalBiSystem(payload.sistema)) {
+    const unidade = payload.portalBiUnit ?? 'Matriz Brumado'
+    const accessMode = payload.portalBiAccessMode ?? 'Interno'
     const blocos = (payload.portalBiReportIds ?? []).map((id) => {
       const report = portalBiById(id)
       return report ? `${report.nome} — ${report.nivelDados}` : id
     })
     const extra = payload.observacoesPorTipoAcesso.Consulta?.trim()
-    const principal = blocos.join('\n')
-    return extra ? `${principal}\n\nObservações adicionais (consulta): ${extra}` : principal
+    const lines: string[] = [`Unidade: ${unidade}`, `Acesso: ${accessMode}`]
+    if (blocos.length) lines.push(blocos.join('\n'))
+    if (extra) lines.push(`Observações adicionais (consulta): ${extra}`)
+    return lines.join('\n')
   }
 
   return orderedSelectedAccessTypes(payload.tipoAcesso)

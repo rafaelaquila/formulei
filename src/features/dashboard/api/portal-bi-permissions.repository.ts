@@ -73,6 +73,7 @@ export async function listPortalBiPermissions(): Promise<PortalBiPermissionRow[]
         ((row.formularios as { setor?: string } | null)?.setor ?? 'Não informado').trim(),
       colaborador:
         ((row.colaboradores as { nome?: string } | null)?.nome ?? 'Não informado').trim(),
+      unidade: extractUnidadeFromDetalhamento((row.detalhamento as string | null) ?? ''),
       acessoBi: (row.detalhamento as string | null)?.trim() || 'Não informado',
       parecerDiretoria,
       observacaoDiretoria: ((row.ajuste as string | null) ?? '').trim() || fallback?.observacaoDiretoria || '',
@@ -111,6 +112,11 @@ export async function updatePortalBiPermissionReview(input: {
   }
 }
 
+function extractUnidadeFromDetalhamento(detalhamento: string): string {
+  const match = detalhamento.match(/Unidade:\s*([^\n]+)/i)
+  return match?.[1]?.trim() || 'Não informado'
+}
+
 function buildFromLocalSubmissions(localReviews: ReviewMap): PortalBiPermissionRow[] {
   const rows: PortalBiPermissionRow[] = []
 
@@ -129,6 +135,7 @@ function buildFromLocalSubmissions(localReviews: ReviewMap): PortalBiPermissionR
           id: `${submission.id}-${colaborador.id}-${sistema.id}`,
           setor,
           colaborador: colaborador.nome,
+          unidade: sistema.portalBiUnit ?? 'Não informado',
           acessoBi: detalhes || 'Não informado',
           parecerDiretoria: localReviews[`${submission.id}-${colaborador.id}-${sistema.id}`]?.parecerDiretoria ?? 'Pendente',
           observacaoDiretoria:

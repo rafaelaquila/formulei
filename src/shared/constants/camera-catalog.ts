@@ -3,7 +3,9 @@ export interface CameraOption {
   label: string
 }
 
-export type CameraUnit = 'Matriz Brumado' | 'Matriz Vitória da Conquista'
+import type { CameraMonitoringUnit } from '@/shared/types/audit'
+
+export type CameraUnit = CameraMonitoringUnit
 
 /** Inventário Matriz Brumado — parte operacional / oficina. */
 export const CAMERAS_MATRIZ_BRUMADO_PRINCIPAL: CameraOption[] = [
@@ -100,10 +102,9 @@ export const TODAS_CAMERAS_MONITORAMENTO: CameraOption[] = [
 ]
 
 export function camerasByUnit(unit: CameraUnit): CameraOption[] {
-  if (unit === 'Matriz Vitória da Conquista') {
-    return CAMERAS_MATRIZ_VITORIA_DA_CONQUISTA
-  }
-  return TODAS_CAMERAS_MATRIZ_BRUMADO
+  if (unit === 'Matriz Brumado') return TODAS_CAMERAS_MATRIZ_BRUMADO
+  if (unit === 'Matriz Vitória da Conquista') return CAMERAS_MATRIZ_VITORIA_DA_CONQUISTA
+  return []
 }
 
 export function isCameraFromUnit(cameraId: string, unit: CameraUnit): boolean {

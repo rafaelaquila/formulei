@@ -14,9 +14,10 @@ import {
   isMonitoramentoCameraSystem,
   isPortalBiSystem,
 } from '@/shared/constants/system-ids'
+import { UNIT_OPTIONS } from '@/shared/constants/units'
 import { orderedSelectedAccessTypes } from '@/shared/lib/access-order'
 import { Field } from '@/shared/ui/ui'
-import type { SystemAccess } from '@/shared/types/audit'
+import type { CameraMonitoringUnit, SystemAccess } from '@/shared/types/audit'
 
 interface Props {
   system: SystemAccess
@@ -57,8 +58,9 @@ export function SystemAccessDetails({ system, updateSelectedSystem }: Props) {
               })
             }
           >
-            <option value="Matriz Brumado">Matriz Brumado</option>
-            <option value="Matriz Vitória da Conquista">Matriz Vitória da Conquista</option>
+            {UNIT_OPTIONS.map((unit) => (
+              <option key={unit} value={unit}>{unit}</option>
+            ))}
           </select>
         </Field>
 
@@ -86,6 +88,7 @@ export function SystemAccessDetails({ system, updateSelectedSystem }: Props) {
   }
 
   if (isPortalBiSystem(system.sistema)) {
+    const selectedBiUnit = (system.portalBiUnit ?? 'Matriz Brumado') as CameraMonitoringUnit
     const biOptions = PORTAL_BI_CATALOG.map((r) => ({
       value: r.id,
       label: r.nome,
@@ -98,6 +101,54 @@ export function SystemAccessDetails({ system, updateSelectedSystem }: Props) {
           <span className="text-sm text-slate-600">Tipo de acesso permitido:</span>
           <Badge variant="secondary">Consulta</Badge>
         </div>
+
+        <Field label="Unidade do Portal BI">
+          <select
+            value={selectedBiUnit}
+            onChange={(event) =>
+              updateSelectedSystem(system.sistema, (current) => ({
+                ...current,
+                portalBiUnit: event.target.value as CameraMonitoringUnit,
+              }))
+            }
+          >
+            {UNIT_OPTIONS.map((unit) => (
+              <option key={unit} value={unit}>{unit}</option>
+            ))}
+          </select>
+        </Field>
+
+        <fieldset className="fieldset">
+          <legend>Tipo de acesso ao BI</legend>
+          <div className="flex gap-4">
+            <label className="flex items-center gap-2 text-sm">
+              <input
+                type="checkbox"
+                checked={system.portalBiAccessMode === 'Interno'}
+                onChange={() =>
+                  updateSelectedSystem(system.sistema, (current) => ({
+                    ...current,
+                    portalBiAccessMode: 'Interno',
+                  }))
+                }
+              />
+              Interno
+            </label>
+            <label className="flex items-center gap-2 text-sm">
+              <input
+                type="checkbox"
+                checked={system.portalBiAccessMode === 'Externo'}
+                onChange={() =>
+                  updateSelectedSystem(system.sistema, (current) => ({
+                    ...current,
+                    portalBiAccessMode: 'Externo',
+                  }))
+                }
+              />
+              Externo
+            </label>
+          </div>
+        </fieldset>
 
         <Field label="Relatórios do Portal BI e nível de dados">
           <MultiCombobox

@@ -10,7 +10,16 @@ export type AccessType =
   | 'Administração'
   | 'Exportação de dados'
 
-export type CameraMonitoringUnit = 'Matriz Brumado' | 'Matriz Vitória da Conquista'
+export type CameraMonitoringUnit =
+  | 'Matriz Vitória da Conquista'
+  | 'Matriz Timóteo'
+  | 'Matriz Brumado'
+  | 'Matriz Ouro Branco'
+  | 'Matriz Juiz de Fora'
+  | 'Matriz Piracicaba'
+  | 'Matriz Candeias'
+  | 'Matriz Camaçari'
+  | 'Matriz Resende'
 
 export interface SystemAccess {
   id: string
@@ -18,9 +27,10 @@ export interface SystemAccess {
   utilizaSistema: 'Sim' | 'Não'
   tipoAcesso: AccessType[]
   observacoesPorTipoAcesso: Partial<Record<AccessType, string>>
-  /** Monitoramento Intelbras: câmeras da Matriz Brumado (inventário completo). */
   cameraMonitoringUnit?: CameraMonitoringUnit
   camerasConsultaIds?: string[]
+  portalBiUnit?: CameraMonitoringUnit
+  portalBiAccessMode?: 'Interno' | 'Externo'
   /** Portal BI: relatórios com nível de dados autorizado. */
   portalBiReportIds?: string[]
   observacoesSistema: string
@@ -38,7 +48,6 @@ export interface AuditFormData {
   gestorResponsavel: string
   dataPreenchimento: string
   colaboradores: CollaboratorAudit[]
-  /** E-mail de quem preenche o formulário (contato / retorno). */
   emailRespondente: string
   tipoVinculo: EmploymentType
   declaracao: boolean
@@ -79,6 +88,7 @@ export interface PortalBiPermissionRow {
   id: string
   setor: string
   colaborador: string
+  unidade: string
   acessoBi: string
   parecerDiretoria: 'Pendente' | 'De acordo' | 'Não de acordo'
   observacaoDiretoria: string
@@ -88,6 +98,7 @@ export interface CameraMonitoringPermissionRow {
   id: string
   setor: string
   colaborador: string
+  unidade: string
   acessoCamera: string
   parecerDiretoria: 'Pendente' | 'De acordo' | 'Não de acordo'
   observacaoDiretoria: string

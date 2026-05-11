@@ -30,7 +30,12 @@ function parseBiItems(acessoBi: string): string[] {
   return acessoBi
     .split(/\s\|\s|\n+/g)
     .map((item) => item.trim())
-    .filter((item) => item.length > 0 && !item.toLowerCase().startsWith('observações adicionais'))
+    .filter(
+      (item) =>
+        item.length > 0 &&
+        !item.toLowerCase().startsWith('observações adicionais') &&
+        !item.toLowerCase().startsWith('unidade:'),
+    )
 }
 
 function reviewKey(rowId: string, biItem: string) {
@@ -77,6 +82,7 @@ export function PortalBiPermissionsPage() {
   const [rows, setRows] = useState<PortalBiPermissionRow[]>([])
   const [loading, setLoading] = useState(true)
   const [setorFilter, setSetorFilter] = useState('')
+  const [unidadeFilter, setUnidadeFilter] = useState('')
   const [nomeFilter, setNomeFilter] = useState('')
   const [acessoFilter, setAcessoFilter] = useState('')
   const [parecerFilter, setParecerFilter] = useState<'' | BiRowAggregateStatus>('')
@@ -106,6 +112,13 @@ export function PortalBiPermissionsPage() {
 
   const setores = useMemo(
     () => Array.from(new Set(rows.map((row) => row.setor))).sort((a, b) => a.localeCompare(b)),
+    [rows],
+  )
+  const unidades = useMemo(
+    () =>
+      Array.from(new Set(rows.map((row) => row.unidade).filter((u) => u && u !== 'Não informado'))).sort((a, b) =>
+        a.localeCompare(b),
+      ),
     [rows],
   )
   const nomes = useMemo(
@@ -155,6 +168,7 @@ export function PortalBiPermissionsPage() {
   const filtered = useMemo(() => {
     return rows.filter((row) => {
       if (setorFilter && row.setor !== setorFilter) return false
+      if (unidadeFilter && row.unidade !== unidadeFilter) return false
       if (nomeFilter && row.colaborador !== nomeFilter) return false
       if (
         acessoFilter.trim() &&
@@ -165,7 +179,7 @@ export function PortalBiPermissionsPage() {
       if (parecerFilter && rowSummaries.get(row.id)?.status !== parecerFilter) return false
       return true
     })
-  }, [rows, setorFilter, nomeFilter, acessoFilter, parecerFilter, rowSummaries])
+  }, [rows, setorFilter, unidadeFilter, nomeFilter, acessoFilter, parecerFilter, rowSummaries])
 
   async function handleUpdateReview(
     rowId: string,
@@ -279,6 +293,21 @@ export function PortalBiPermissionsPage() {
                 </select>
               </Field>
 
+              <Field label="Unidade" htmlFor="filter-unidade">
+                <select
+                  id="filter-unidade"
+                  value={unidadeFilter}
+                  onChange={(event) => setUnidadeFilter(event.target.value)}
+                >
+                  <option value="">Todas</option>
+                  {unidades.map((u) => (
+                    <option key={u} value={u}>
+                      {u}
+                    </option>
+                  ))}
+                </select>
+              </Field>
+
               <Field label="Colaborador" htmlFor="filter-colaborador">
                 <select
                   id="filter-colaborador"
@@ -328,6 +357,7 @@ export function PortalBiPermissionsPage() {
                   <thead>
                     <tr>
                       <th>Setor</th>
+                      <th>Unidade</th>
                       <th>Colaborador</th>
                       <th>Acessos BI cadastrados</th>
                       <th>Validação por BI</th>
@@ -337,6 +367,7 @@ export function PortalBiPermissionsPage() {
                     {filtered.map((row) => (
                       <tr key={row.id}>
                         <td>{row.setor}</td>
+                        <td>{row.unidade}</td>
                         <td>{row.colaborador}</td>
                         <td>{parseBiItems(row.acessoBi).length}</td>
                         <td>

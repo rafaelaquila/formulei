@@ -74,6 +74,7 @@ export function CameraMonitoringPermissionsPage() {
   const [rows, setRows] = useState<CameraMonitoringPermissionRow[]>([])
   const [loading, setLoading] = useState(true)
   const [setorFilter, setSetorFilter] = useState('')
+  const [unidadeFilter, setUnidadeFilter] = useState('')
   const [nomeFilter, setNomeFilter] = useState('')
   const [cameraFilter, setCameraFilter] = useState('')
   const [parecerFilter, setParecerFilter] = useState<'' | CameraRowAggregateStatus>('')
@@ -102,6 +103,13 @@ export function CameraMonitoringPermissionsPage() {
 
   const setores = useMemo(
     () => Array.from(new Set(rows.map((row) => row.setor))).sort((a, b) => a.localeCompare(b)),
+    [rows],
+  )
+  const unidades = useMemo(
+    () =>
+      Array.from(new Set(rows.map((row) => row.unidade).filter((u) => u && u !== 'Não informado'))).sort((a, b) =>
+        a.localeCompare(b),
+      ),
     [rows],
   )
   const nomes = useMemo(
@@ -148,6 +156,7 @@ export function CameraMonitoringPermissionsPage() {
   const filtered = useMemo(() => {
     return rows.filter((row) => {
       if (setorFilter && row.setor !== setorFilter) return false
+      if (unidadeFilter && row.unidade !== unidadeFilter) return false
       if (nomeFilter && row.colaborador !== nomeFilter) return false
       if (
         cameraFilter.trim() &&
@@ -158,7 +167,7 @@ export function CameraMonitoringPermissionsPage() {
       if (parecerFilter && rowSummaries.get(row.id)?.status !== parecerFilter) return false
       return true
     })
-  }, [rows, setorFilter, nomeFilter, cameraFilter, parecerFilter, rowSummaries])
+  }, [rows, setorFilter, unidadeFilter, nomeFilter, cameraFilter, parecerFilter, rowSummaries])
 
   async function handleUpdateReview(
     rowId: string,
@@ -270,6 +279,20 @@ export function CameraMonitoringPermissionsPage() {
                   ))}
                 </select>
               </Field>
+              <Field label="Unidade" htmlFor="camera-filter-unidade">
+                <select
+                  id="camera-filter-unidade"
+                  value={unidadeFilter}
+                  onChange={(event) => setUnidadeFilter(event.target.value)}
+                >
+                  <option value="">Todas</option>
+                  {unidades.map((u) => (
+                    <option key={u} value={u}>
+                      {u}
+                    </option>
+                  ))}
+                </select>
+              </Field>
               <Field label="Colaborador" htmlFor="camera-filter-colaborador">
                 <select
                   id="camera-filter-colaborador"
@@ -318,6 +341,7 @@ export function CameraMonitoringPermissionsPage() {
                   <thead>
                     <tr>
                       <th>Setor</th>
+                      <th>Unidade</th>
                       <th>Colaborador</th>
                       <th>Câmeras cadastradas</th>
                       <th>Validação por câmera</th>
@@ -327,6 +351,7 @@ export function CameraMonitoringPermissionsPage() {
                     {filtered.map((row) => (
                       <tr key={row.id}>
                         <td>{row.setor}</td>
+                        <td>{row.unidade}</td>
                         <td>{row.colaborador}</td>
                         <td>{parseCameraItems(row.acessoCamera).length}</td>
                         <td>
