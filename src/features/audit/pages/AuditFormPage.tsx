@@ -206,7 +206,7 @@ export function AuditFormPage() {
           <div className="section-header">
           </div>
           <Card title="2. Acessos a Sistemas">
-            <p style={{ fontSize: '0.8rem', color: '#787778' }}>Colaboradores selecionados e sistemas utilizados</p>
+            <p style={{ fontSize: '0.8rem', color: '#787778' }}>Colaboradores selecionados e sistemas utilizados (clique no nome do colaborador para editar os acessos)</p>
             {form.colaboradores.length === 0 ? (
               <p>Selecione ao menos um colaborador para configurar os acessos.</p>
             ) : (
