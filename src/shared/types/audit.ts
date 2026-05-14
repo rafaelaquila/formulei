@@ -11,15 +11,15 @@ export type AccessType =
   | 'Exportação de dados'
 
 export type CameraMonitoringUnit =
-  | 'Matriz Vitória da Conquista'
-  | 'Matriz Timóteo'
+  | 'Filial Vitória da Conquista'
+  | 'Filial Timóteo'
   | 'Matriz Brumado'
-  | 'Matriz Ouro Branco'
-  | 'Matriz Juiz de Fora'
-  | 'Matriz Piracicaba'
-  | 'Matriz Candeias'
-  | 'Matriz Camaçari'
-  | 'Matriz Resende'
+  | 'Filial Ouro Branco'
+  | 'Filial Juiz de Fora'
+  | 'Filial Piracicaba'
+  | 'Filial Candeias'
+  | 'Filial Camaçari'
+  | 'Filial Resende'
 
 export interface SystemAccess {
   id: string

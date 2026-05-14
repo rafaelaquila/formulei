@@ -34,7 +34,7 @@ export function normalizeSelectedAccesses(sistemas: SystemAccess[]) {
         observacoesPorTipoAcesso: semFilial.observacoesPorTipoAcesso ?? {},
         cameraMonitoringUnit: (semFilial.cameraMonitoringUnit ?? 'Matriz Brumado') as
           | 'Matriz Brumado'
-          | 'Matriz Vitória da Conquista',
+          | 'Filial Vitória da Conquista',
         camerasConsultaIds: semFilial.camerasConsultaIds ?? [],
         portalBiReportIds: semFilial.portalBiReportIds ?? [],
       }
