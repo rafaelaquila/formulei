@@ -168,7 +168,7 @@ export function AuditFormPage() {
               />
             </Field>
 
-            <Field label="Seu e-mail" htmlFor="email-respondente">
+            <Field label="Seu e-mail" htmlFor="email-respondente" className="h-[0px]">
               <input
                 id="email-respondente"
                 type="email"
