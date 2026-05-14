@@ -1,6 +1,7 @@
 import { readLocalSubmissions } from '@/features/audit/storage/local-submissions'
 import { supabase } from '@/lib/supabase/client'
-import type { AuditFormData, DashboardHistoryRow, DashboardInsight } from '@/shared/types/audit'
+import { sortUnitsByCatalogOrder } from '@/shared/constants/units'
+import type { AuditFormData, DashboardHistoryRow, DashboardInsight, SystemAccess } from '@/shared/types/audit'
 
 export async function getDashboardInsights(): Promise<DashboardInsight> {
   const submissions = readLocalSubmissions()
@@ -126,7 +127,12 @@ function buildInsightsFromPayloads(payloads: AuditFormData[]): DashboardInsight 
           departamento: colaborador.departamento || 'Não informado',
           tipoVinculo: payload.tipoVinculo || 'Não informado',
           sistema: sistema.sistema || 'Não informado',
-          unidadeMonitoramento: sistema.cameraMonitoringUnit ?? 'Não se aplica',
+          unidadeMonitoramento:
+            sistema.sistema === 'Portal BI'
+              ? (sistema.portalBiUnits?.length
+                  ? sortUnitsByCatalogOrder(sistema.portalBiUnits).join('; ')
+                  : 'Não se aplica')
+              : (sistema.cameraMonitoringUnit ?? 'Não se aplica'),
           tiposAcesso: sistema.tipoAcesso.length ? sistema.tipoAcesso.join(' | ') : 'Não informado',
           detalhamento:
             sistema.sistema === 'Portal BI'
@@ -148,11 +154,13 @@ function buildInsightsFromPayloads(payloads: AuditFormData[]): DashboardInsight 
 }
 
 function extractMonitoringUnit(detalhamento: string): string {
-  const match = detalhamento.match(/Unidade:\s*([^\n]+)/i)
-  return match?.[1]?.trim() || 'Não se aplica'
+  const plural = detalhamento.match(/Unidades:\s*([^\n]+)/i)
+  if (plural?.[1]) return plural[1].trim()
+  const single = detalhamento.match(/Unidade:\s*([^\n]+)/i)
+  return single?.[1]?.trim() || 'Não se aplica'
 }
 
-function buildLocalDetalhamento(sistema: AuditFormData['colaboradores'][number]['sistemas'][number]) {
+function buildLocalDetalhamento(sistema: SystemAccess) {
   if (sistema.sistema === 'Portal BI') {
     return (sistema.portalBiReportIds ?? []).join(' | ') || 'Não informado'
   }
@@ -172,6 +180,13 @@ function countPortalBiFromDetalhamento(detalhamento: string): number {
   const items = detalhamento
     .split('\n')
     .map((line) => line.trim())
-    .filter((line) => line.length > 0 && !line.toLowerCase().startsWith('observações adicionais'))
+    .filter(
+      (line) =>
+        line.length > 0 &&
+        !line.toLowerCase().startsWith('observações adicionais') &&
+        !line.toLowerCase().startsWith('unidade:') &&
+        !line.toLowerCase().startsWith('unidades:') &&
+        !line.toLowerCase().startsWith('acesso:'),
+    )
   return items.length
 }

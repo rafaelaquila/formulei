@@ -75,7 +75,6 @@ export const TODAS_CAMERAS_MATRIZ_BRUMADO: CameraOption[] = [
   ...CAMERAS_MATRIZ_BRUMADO_PRINCIPAL,
 ]
 
-/** Inventário da Matriz Vitória da Conquista. */
 export const CAMERAS_MATRIZ_VITORIA_DA_CONQUISTA: CameraOption[] = [
   { id: 'vdc-1', label: '1- Galpão Borracharia - Interno (Lateral Direita)' },
   { id: 'vdc-2', label: '2- Frente do Pátio Refeitório - Externa' },
@@ -95,7 +94,6 @@ export const CAMERAS_MATRIZ_VITORIA_DA_CONQUISTA: CameraOption[] = [
   { id: 'vdc-16', label: '16- Frente Sala de Jogos/Encarregados - Lateral' },
 ]
 
-/** Inventário completo do monitoramento Intelbras (Brumado + Vitória da Conquista). */
 export const TODAS_CAMERAS_MONITORAMENTO: CameraOption[] = [
   ...TODAS_CAMERAS_MATRIZ_BRUMADO,
   ...CAMERAS_MATRIZ_VITORIA_DA_CONQUISTA,
@@ -103,7 +101,7 @@ export const TODAS_CAMERAS_MONITORAMENTO: CameraOption[] = [
 
 export function camerasByUnit(unit: CameraUnit): CameraOption[] {
   if (unit === 'Matriz Brumado') return TODAS_CAMERAS_MATRIZ_BRUMADO
-  if (unit === 'Matriz Vitória da Conquista') return CAMERAS_MATRIZ_VITORIA_DA_CONQUISTA
+  if (unit === 'Filial Vitória da Conquista') return CAMERAS_MATRIZ_VITORIA_DA_CONQUISTA
   return []
 }
 

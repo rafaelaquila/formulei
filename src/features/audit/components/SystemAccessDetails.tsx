@@ -14,7 +14,7 @@ import {
   isMonitoramentoCameraSystem,
   isPortalBiSystem,
 } from '@/shared/constants/system-ids'
-import { UNIT_OPTIONS } from '@/shared/constants/units'
+import { UNIT_OPTIONS, sortUnitsByCatalogOrder } from '@/shared/constants/units'
 import { orderedSelectedAccessTypes } from '@/shared/lib/access-order'
 import { Field } from '@/shared/ui/ui'
 import type { CameraMonitoringUnit, SystemAccess } from '@/shared/types/audit'
@@ -88,7 +88,11 @@ export function SystemAccessDetails({ system, updateSelectedSystem }: Props) {
   }
 
   if (isPortalBiSystem(system.sistema)) {
-    const selectedBiUnit = (system.portalBiUnit ?? 'Matriz Brumado') as CameraMonitoringUnit
+    const biUnitOptions = UNIT_OPTIONS.map((u) => ({
+      value: u,
+      label: u,
+    }))
+    const selectedBiUnits = sortUnitsByCatalogOrder(system.portalBiUnits ?? [])
     const biOptions = PORTAL_BI_CATALOG.map((r) => ({
       value: r.id,
       label: r.nome,
@@ -102,20 +106,20 @@ export function SystemAccessDetails({ system, updateSelectedSystem }: Props) {
           <Badge variant="secondary">Consulta</Badge>
         </div>
 
-        <Field label="Unidade do Portal BI">
-          <select
-            value={selectedBiUnit}
-            onChange={(event) =>
+        <Field label="Matriz e filiais com acesso ao Portal BI">
+          <MultiCombobox
+            options={biUnitOptions}
+            values={selectedBiUnits}
+            placeholder="Busque matriz ou filial..."
+            searchPlaceholder="Filtrar unidades..."
+            emptyText="Nenhuma unidade encontrada."
+            onChange={(next) =>
               updateSelectedSystem(system.sistema, (current) => ({
                 ...current,
-                portalBiUnit: event.target.value as CameraMonitoringUnit,
+                portalBiUnits: sortUnitsByCatalogOrder(next as CameraMonitoringUnit[]),
               }))
             }
-          >
-            {UNIT_OPTIONS.map((unit) => (
-              <option key={unit} value={unit}>{unit}</option>
-            ))}
-          </select>
+          />
         </Field>
 
         <fieldset className="fieldset">

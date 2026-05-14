@@ -34,7 +34,9 @@ function parseBiItems(acessoBi: string): string[] {
       (item) =>
         item.length > 0 &&
         !item.toLowerCase().startsWith('observações adicionais') &&
-        !item.toLowerCase().startsWith('unidade:'),
+        !item.toLowerCase().startsWith('unidade:') &&
+        !item.toLowerCase().startsWith('unidades:') &&
+        !item.toLowerCase().startsWith('acesso:'),
     )
 }
 
@@ -114,13 +116,15 @@ export function PortalBiPermissionsPage() {
     () => Array.from(new Set(rows.map((row) => row.setor))).sort((a, b) => a.localeCompare(b)),
     [rows],
   )
-  const unidades = useMemo(
-    () =>
-      Array.from(new Set(rows.map((row) => row.unidade).filter((u) => u && u !== 'Não informado'))).sort((a, b) =>
-        a.localeCompare(b),
-      ),
-    [rows],
-  )
+  const unidades = useMemo(() => {
+    const parts = new Set<string>()
+    for (const row of rows) {
+      for (const p of row.unidade.split(';').map((s) => s.trim()).filter(Boolean)) {
+        parts.add(p)
+      }
+    }
+    return Array.from(parts).sort((a, b) => a.localeCompare(b))
+  }, [rows])
   const nomes = useMemo(
     () =>
       Array.from(new Set(rows.map((row) => row.colaborador))).sort((a, b) =>
@@ -168,7 +172,10 @@ export function PortalBiPermissionsPage() {
   const filtered = useMemo(() => {
     return rows.filter((row) => {
       if (setorFilter && row.setor !== setorFilter) return false
-      if (unidadeFilter && row.unidade !== unidadeFilter) return false
+      if (unidadeFilter) {
+        const rowParts = row.unidade.split(';').map((s) => s.trim())
+        if (!rowParts.includes(unidadeFilter)) return false
+      }
       if (nomeFilter && row.colaborador !== nomeFilter) return false
       if (
         acessoFilter.trim() &&

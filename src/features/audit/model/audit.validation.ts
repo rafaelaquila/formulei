@@ -1,6 +1,10 @@
 import { SYSTEM_SUGGESTIONS } from '@/shared/constants/audit'
 import { isCameraFromUnit, type CameraUnit } from '@/shared/constants/camera-catalog'
 import {
+  normalizeLegacyUnitLabel,
+  sortUnitsByCatalogOrder,
+} from '@/shared/constants/units'
+import {
   isMonitoramentoCameraSystem,
   isPortalBiSystem,
 } from '@/shared/constants/system-ids'
@@ -9,7 +13,7 @@ import {
 } from '@/shared/lib/br-date'
 import { orderedSelectedAccessTypes } from '@/shared/lib/access-order'
 import { sortSystemAccessesByCatalog } from '@/shared/lib/system-order'
-import type { AuditFormData, SystemAccess } from '@/shared/types/audit'
+import type { AuditFormData, CameraMonitoringUnit, SystemAccess } from '@/shared/types/audit'
 
 export function normalizeSelectedAccesses(sistemas: SystemAccess[]) {
   const uniqueBySystem = new Map<string, SystemAccess>()
@@ -24,19 +28,40 @@ export function normalizeSelectedAccesses(sistemas: SystemAccess[]) {
           consultaFilial?: unknown
           statusAcesso?: unknown
           ajusteNecessario?: unknown
+          portalBiUnit?: string
         }),
       }
       delete semFilial.consultaFilial
       delete semFilial.statusAcesso
       delete semFilial.ajusteNecessario
+
+      const legacyPortalBiUnit = semFilial.portalBiUnit
+      delete semFilial.portalBiUnit
+
+      let portalBiUnitsForPortal: CameraMonitoringUnit[] | undefined
+      if (isPortalBiSystem(sistema.sistema)) {
+        let list = (semFilial.portalBiUnits ?? []).map((u) =>
+          normalizeLegacyUnitLabel(String(u)),
+        ) as CameraMonitoringUnit[]
+        if (!list.length && legacyPortalBiUnit) {
+          list = [normalizeLegacyUnitLabel(String(legacyPortalBiUnit))]
+        }
+        portalBiUnitsForPortal = list.length ? sortUnitsByCatalogOrder(list) : []
+      }
+
       let merged: SystemAccess = {
         ...semFilial,
         observacoesPorTipoAcesso: semFilial.observacoesPorTipoAcesso ?? {},
-        cameraMonitoringUnit: (semFilial.cameraMonitoringUnit ?? 'Matriz Brumado') as
-          | 'Matriz Brumado'
-          | 'Filial Vitória da Conquista',
+        cameraMonitoringUnit: normalizeLegacyUnitLabel(
+          String(semFilial.cameraMonitoringUnit ?? 'Matriz Brumado'),
+        ) as CameraUnit,
         camerasConsultaIds: semFilial.camerasConsultaIds ?? [],
         portalBiReportIds: semFilial.portalBiReportIds ?? [],
+      }
+      if (portalBiUnitsForPortal !== undefined) {
+        merged = { ...merged, portalBiUnits: portalBiUnitsForPortal }
+      } else {
+        delete (merged as { portalBiUnits?: CameraMonitoringUnit[] }).portalBiUnits
       }
       if (isMonitoramentoCameraSystem(sistema.sistema) || isPortalBiSystem(sistema.sistema)) {
         merged = { ...merged, tipoAcesso: ['Consulta'] }
@@ -84,6 +109,9 @@ export function validateAuditForm(form: AuditFormData): string | null {
           return `Selecione ao menos uma câmera da unidade ${unidade} em ${sistema.sistema} (${colaborador.nome}).`
         }
       } else if (isPortalBiSystem(sistema.sistema)) {
+        if (!(sistema.portalBiUnits ?? []).filter(Boolean).length) {
+          return `Selecione ao menos uma matriz ou filial do Portal BI em ${sistema.sistema} (${colaborador.nome}).`
+        }
         if (!sistema.portalBiReportIds?.length) {
           return `Selecione ao menos um relatório do Portal BI para ${sistema.sistema} (${colaborador.nome}).`
         }

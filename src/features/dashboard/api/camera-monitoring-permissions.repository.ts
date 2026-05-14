@@ -2,6 +2,7 @@ import { readLocalSubmissions } from '@/features/audit/storage/local-submissions
 import { supabase } from '@/lib/supabase/client'
 import { cameraLabelById } from '@/shared/constants/camera-catalog'
 import { MONITORAMENTO_CAMERA_SYSTEM } from '@/shared/constants/system-ids'
+import { normalizeLegacyUnitLabel } from '@/shared/constants/units'
 import type { CameraMonitoringPermissionRow } from '@/shared/types/audit'
 
 const LOCAL_CAMERA_REVIEW_KEY = 'formulei_camera_reviews_v1'
@@ -107,7 +108,9 @@ export async function updateCameraMonitoringPermissionReview(input: {
 
 function extractUnidadeFromDetalhamento(detalhamento: string): string {
   const match = detalhamento.match(/Unidade:\s*([^\n]+)/i)
-  return match?.[1]?.trim() || 'Não informado'
+  const raw = match?.[1]?.trim()
+  if (!raw) return 'Não informado'
+  return normalizeLegacyUnitLabel(raw)
 }
 
 function buildFromLocalSubmissions(localReviews: ReviewMap): CameraMonitoringPermissionRow[] {
@@ -118,7 +121,9 @@ function buildFromLocalSubmissions(localReviews: ReviewMap): CameraMonitoringPer
     for (const colaborador of submission.payload.colaboradores ?? []) {
       for (const sistema of colaborador.sistemas ?? []) {
         if (sistema.sistema !== MONITORAMENTO_CAMERA_SYSTEM) continue
-        const unidade = sistema.cameraMonitoringUnit ?? 'Matriz Brumado'
+        const unidade = normalizeLegacyUnitLabel(
+          String(sistema.cameraMonitoringUnit ?? 'Matriz Brumado'),
+        )
         const cameras = (sistema.camerasConsultaIds ?? [])
           .map((id) => cameraLabelById(id))
           .filter((item): item is string => Boolean(item))

@@ -29,7 +29,7 @@ export interface SystemAccess {
   observacoesPorTipoAcesso: Partial<Record<AccessType, string>>
   cameraMonitoringUnit?: CameraMonitoringUnit
   camerasConsultaIds?: string[]
-  portalBiUnit?: CameraMonitoringUnit
+  portalBiUnits?: CameraMonitoringUnit[]
   portalBiAccessMode?: 'Interno' | 'Externo'
   /** Portal BI: relatórios com nível de dados autorizado. */
   portalBiReportIds?: string[]

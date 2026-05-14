@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { submitAudit } from '@/features/audit/api/audit.repository'
 import {
   AUDIT_DRAFT_STORAGE_KEY,
@@ -28,8 +28,21 @@ export function useAuditForm() {
     AUDIT_DRAFT_STORAGE_KEY,
     initialAuditForm,
   )
+  const didMigrateDraft = useRef(false)
   const [isLoading, setIsLoading] = useState(false)
   const { toast, showToast } = useToast()
+
+  useEffect(() => {
+    if (didMigrateDraft.current) return
+    didMigrateDraft.current = true
+    setForm((prev) => ({
+      ...prev,
+      colaboradores: prev.colaboradores.map((c) => ({
+        ...c,
+        sistemas: normalizeSelectedAccesses(c.sistemas),
+      })),
+    }))
+  }, [setForm])
 
   const setSelectedCollaboratorNames = (names: string[]) => {
     const uniqueOrdered = Array.from(new Set(names.map((name) => name.trim()).filter(Boolean)))

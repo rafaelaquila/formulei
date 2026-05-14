@@ -29,7 +29,7 @@ export function createSystemAccess(systemName: string): SystemAccess {
     return {
       ...base,
       tipoAcesso: ['Consulta'],
-      portalBiUnit: 'Matriz Brumado',
+      portalBiUnits: ['Matriz Brumado'],
       portalBiAccessMode: 'Interno',
       portalBiReportIds: [],
     }

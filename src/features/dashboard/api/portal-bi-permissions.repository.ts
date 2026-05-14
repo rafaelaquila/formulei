@@ -1,6 +1,7 @@
 import { readLocalSubmissions } from '@/features/audit/storage/local-submissions'
 import { supabase } from '@/lib/supabase/client'
 import { portalBiById } from '@/shared/constants/portal-bi-catalog'
+import { normalizeLegacyUnitLabel, sortUnitsByCatalogOrder } from '@/shared/constants/units'
 import type { PortalBiPermissionRow } from '@/shared/types/audit'
 
 const LOCAL_BI_REVIEW_KEY = 'formulei_portal_bi_reviews_v1'
@@ -113,8 +114,18 @@ export async function updatePortalBiPermissionReview(input: {
 }
 
 function extractUnidadeFromDetalhamento(detalhamento: string): string {
-  const match = detalhamento.match(/Unidade:\s*([^\n]+)/i)
-  return match?.[1]?.trim() || 'Não informado'
+  const plural = detalhamento.match(/Unidades:\s*([^\n]+)/i)
+  if (plural?.[1]) {
+    return plural[1]
+      .split(';')
+      .map((s) => normalizeLegacyUnitLabel(s.trim()))
+      .filter(Boolean)
+      .join('; ')
+  }
+  const single = detalhamento.match(/Unidade:\s*([^\n]+)/i)
+  const raw = single?.[1]?.trim()
+  if (!raw) return 'Não informado'
+  return normalizeLegacyUnitLabel(raw)
 }
 
 function buildFromLocalSubmissions(localReviews: ReviewMap): PortalBiPermissionRow[] {
@@ -135,7 +146,10 @@ function buildFromLocalSubmissions(localReviews: ReviewMap): PortalBiPermissionR
           id: `${submission.id}-${colaborador.id}-${sistema.id}`,
           setor,
           colaborador: colaborador.nome,
-          unidade: sistema.portalBiUnit ?? 'Não informado',
+          unidade:
+            sistema.portalBiUnits?.length
+              ? sortUnitsByCatalogOrder(sistema.portalBiUnits).join('; ')
+              : 'Não informado',
           acessoBi: detalhes || 'Não informado',
           parecerDiretoria: localReviews[`${submission.id}-${colaborador.id}-${sistema.id}`]?.parecerDiretoria ?? 'Pendente',
           observacaoDiretoria:
