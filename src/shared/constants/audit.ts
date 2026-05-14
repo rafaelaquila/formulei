@@ -11,7 +11,6 @@ export const SYSTEM_SUGGESTIONS = [
   'MatrixGo',
   'MaaS360',
   'Navita MDM',
-  'PowerBI',
   'Abasteceu',
   'Jorney',
   'KMM',
