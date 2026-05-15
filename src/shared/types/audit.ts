@@ -72,7 +72,10 @@ export interface DashboardHistoryRow {
   sistema: string
   unidadeMonitoramento: string
   tiposAcesso: string
+  /** Quantidade de BIs (tela) ou detalhamento de outros sistemas antes do merge. */
   detalhamento: string
+  /** Lista completa dos relatórios Portal BI (exportação CSV). */
+  relatoriosPortalBi?: string
   observacoesSistema: string
 }
 

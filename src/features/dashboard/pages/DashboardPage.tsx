@@ -16,11 +16,40 @@ import { getDashboardInsights } from '@/features/dashboard/api/dashboard.reposit
 import { logoutDashboard } from '@/features/dashboard/auth/dashboard-session'
 import { DashboardAside } from '@/features/dashboard/components/DashboardAside'
 import { exportCsv } from '@/shared/lib/export-csv'
-import type { DashboardInsight } from '@/shared/types/audit'
+import type { DashboardHistoryRow, DashboardInsight } from '@/shared/types/audit'
 import { AppFooter } from '@/shared/ui/Footer'
 import { Card } from '@/shared/ui/ui'
 
 const PIE_COLORS = ['#0F172A', '#334155', '#64748B', '#94A3B8', '#CBD5E1']
+
+const HISTORY_CELL_PREVIEW_LENGTH = 30
+
+function historyRowToCsvExport(row: DashboardHistoryRow) {
+  const { relatoriosPortalBi: _relatorios, ...rest } = row
+  return {
+    ...rest,
+    quantidadeBi: row.detalhamento,
+    detalhamento:
+      row.relatoriosPortalBi && row.relatoriosPortalBi !== '—'
+        ? row.relatoriosPortalBi
+        : row.detalhamento,
+  } as Record<string, string | number>
+}
+
+function TruncatedHistoryCell({ text }: { text: string }) {
+  const value = String(text ?? '').trim() || '—'
+  if (value.length <= HISTORY_CELL_PREVIEW_LENGTH) {
+    return <span>{value}</span>
+  }
+  return (
+    <span
+      className="history-cell-truncate"
+      title={value}
+    >
+      {value.slice(0, HISTORY_CELL_PREVIEW_LENGTH)}…
+    </span>
+  )
+}
 
 export function DashboardPage() {
   const [insights, setInsights] = useState<DashboardInsight | null>(null)
@@ -162,7 +191,7 @@ export function DashboardPage() {
               onClick={() =>
                 exportCsv(
                   'historico-formulei.csv',
-                  filteredHistory.map((row) => ({ ...row } as Record<string, string | number>)),
+                  filteredHistory.map((row) => historyRowToCsvExport(row)),
                 )
               }
             >
@@ -203,9 +232,13 @@ export function DashboardPage() {
                         <td>{row.tipoVinculo}</td>
                         <td>{row.sistema}</td>
                         <td>{row.unidadeMonitoramento}</td>
-                        <td>{row.tiposAcesso}</td>
+                        <td>
+                          <TruncatedHistoryCell text={row.tiposAcesso} />
+                        </td>
                         <td>{row.detalhamento}</td>
-                        <td>{row.observacoesSistema}</td>
+                        <td>
+                          <TruncatedHistoryCell text={row.observacoesSistema} />
+                        </td>
                       </tr>
                     ))}
                   </tbody>

@@ -453,6 +453,11 @@ textarea::placeholder {
   font-weight: 600;
 }
 
+.history-cell-truncate {
+  cursor: help;
+  border-bottom: 1px dotted rgba(15, 23, 42, 0.35);
+}
+
 .bi-review-cell {
   display: grid;
   gap: 6px;

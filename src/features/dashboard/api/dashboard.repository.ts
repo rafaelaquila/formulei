@@ -1,6 +1,7 @@
 import { readLocalSubmissions } from '@/features/audit/storage/local-submissions'
 import { supabase } from '@/lib/supabase/client'
 import { SYSTEM_SUGGESTIONS } from '@/shared/constants/audit'
+import { portalBiById } from '@/shared/constants/portal-bi-catalog'
 import { sortUnitsByCatalogOrder } from '@/shared/constants/units'
 import type { AuditFormData, DashboardHistoryRow, DashboardInsight, SystemAccess } from '@/shared/types/audit'
 
@@ -67,6 +68,7 @@ function mergeHistoryGroup(rows: DashboardHistoryRow[]): DashboardHistoryRow {
     unidadeMonitoramento,
     tiposAcesso,
     detalhamento: quantidadeBi,
+    relatoriosPortalBi: portalBi?.relatoriosPortalBi ?? '—',
     observacoesSistema: observacoesParts.length ? observacoesParts.join('\n\n') : 'Não informado',
   }
 }
@@ -147,6 +149,10 @@ export async function getDashboardInsights(): Promise<DashboardInsight> {
         sistemaNome === 'Portal BI'
           ? `${countPortalBiFromDetalhamento(String(acesso.detalhamento ?? ''))}`
           : String(acesso.detalhamento ?? 'Não informado').trim(),
+      relatoriosPortalBi:
+        sistemaNome === 'Portal BI'
+          ? listPortalBiFromDetalhamento(String(acesso.detalhamento ?? ''))
+          : undefined,
       observacoesSistema: String(acesso.observacoes ?? acesso.rotina ?? '').trim() || 'Não informado',
     }
 
@@ -215,6 +221,10 @@ function buildInsightsFromPayloads(payloads: AuditFormData[]): DashboardInsight 
             sistema.sistema === 'Portal BI'
               ? `${sistema.portalBiReportIds?.length ?? 0}`
               : buildLocalDetalhamento(sistema),
+          relatoriosPortalBi:
+            sistema.sistema === 'Portal BI'
+              ? formatPortalBiReportList(sistema.portalBiReportIds ?? [])
+              : undefined,
           observacoesSistema: sistema.observacoesSistema?.trim() || 'Não informado',
         })
       })
@@ -257,8 +267,8 @@ function buildLocalDetalhamento(sistema: SystemAccess) {
   return linhas.join('\n') || 'Não informado'
 }
 
-function countPortalBiFromDetalhamento(detalhamento: string): number {
-  const items = detalhamento
+function portalBiReportLinesFromDetalhamento(detalhamento: string): string[] {
+  return detalhamento
     .split('\n')
     .map((line) => line.trim())
     .filter(
@@ -269,5 +279,23 @@ function countPortalBiFromDetalhamento(detalhamento: string): number {
         !line.toLowerCase().startsWith('unidades:') &&
         !line.toLowerCase().startsWith('acesso:'),
     )
-  return items.length
+}
+
+function countPortalBiFromDetalhamento(detalhamento: string): number {
+  return portalBiReportLinesFromDetalhamento(detalhamento).length
+}
+
+function listPortalBiFromDetalhamento(detalhamento: string): string {
+  const items = portalBiReportLinesFromDetalhamento(detalhamento)
+  return items.length ? items.join(' | ') : '—'
+}
+
+function formatPortalBiReportList(reportIds: string[]): string {
+  const items = reportIds
+    .map((id) => {
+      const report = portalBiById(id)
+      return report ? `${report.nome} — ${report.nivelDados}` : id
+    })
+    .filter(Boolean)
+  return items.length ? items.join(' | ') : '—'
 }
