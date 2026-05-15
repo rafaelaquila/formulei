@@ -1,7 +1,75 @@
 import { readLocalSubmissions } from '@/features/audit/storage/local-submissions'
 import { supabase } from '@/lib/supabase/client'
+import { SYSTEM_SUGGESTIONS } from '@/shared/constants/audit'
 import { sortUnitsByCatalogOrder } from '@/shared/constants/units'
 import type { AuditFormData, DashboardHistoryRow, DashboardInsight, SystemAccess } from '@/shared/types/audit'
+
+function catalogOrderIndex(name: string): number {
+  const idx = (SYSTEM_SUGGESTIONS as readonly string[]).indexOf(name)
+  return idx === -1 ? 9999 : idx
+}
+
+function sortSystemNames(names: string[]): string[] {
+  return [...new Set(names)].sort((a, b) => {
+    const da = catalogOrderIndex(a)
+    const db = catalogOrderIndex(b)
+    if (da !== db) return da - db
+    return a.localeCompare(b)
+  })
+}
+
+/** Uma linha por colaborador em cada formulário (vários sistemas na mesma linha). */
+function mergeHistoryGroup(rows: DashboardHistoryRow[]): DashboardHistoryRow {
+  if (rows.length === 1) return rows[0]
+
+  const first = rows[0]
+  const sorted = [...rows].sort(
+    (a, b) => catalogOrderIndex(a.sistema) - catalogOrderIndex(b.sistema),
+  )
+  const sistemas = sortSystemNames(sorted.map((r) => r.sistema))
+
+  const portalBi = sorted.find((r) => r.sistema === 'Portal BI')
+  const quantidadeBi = portalBi?.detalhamento ?? '—'
+
+  const unidades = [
+    ...new Set(
+      sorted
+        .map((r) => r.unidadeMonitoramento)
+        .filter((u) => u && u !== 'Não se aplica'),
+    ),
+  ]
+  const unidadeMonitoramento = unidades.length ? unidades.join('; ') : 'Não se aplica'
+
+  const tiposAcesso = sorted.map((r) => `${r.sistema}: ${r.tiposAcesso}`).join(' | ')
+
+  const observacoesParts = sorted
+    .map((r) => {
+      const chunks: string[] = []
+      if (r.observacoesSistema && r.observacoesSistema !== 'Não informado') {
+        chunks.push(r.observacoesSistema)
+      }
+      if (
+        r.sistema !== 'Portal BI' &&
+        r.detalhamento &&
+        r.detalhamento !== 'Não informado' &&
+        r.detalhamento !== quantidadeBi
+      ) {
+        chunks.push(r.detalhamento)
+      }
+      if (!chunks.length) return null
+      return `${r.sistema}: ${chunks.join(' — ')}`
+    })
+    .filter((line): line is string => Boolean(line))
+
+  return {
+    ...first,
+    sistema: sistemas.join(' | '),
+    unidadeMonitoramento,
+    tiposAcesso,
+    detalhamento: quantidadeBi,
+    observacoesSistema: observacoesParts.length ? observacoesParts.join('\n\n') : 'Não informado',
+  }
+}
 
 export async function getDashboardInsights(): Promise<DashboardInsight> {
   const submissions = readLocalSubmissions()
@@ -32,7 +100,7 @@ export async function getDashboardInsights(): Promise<DashboardInsight> {
 
   const sistemaMap: Record<string, number> = {}
   const tipoMap: Record<string, number> = {}
-  const historico: DashboardHistoryRow[] = []
+  const historicoGroups = new Map<string, DashboardHistoryRow[]>()
 
   for (const acesso of accessData) {
     const sistemaNome =
@@ -60,8 +128,11 @@ export async function getDashboardInsights(): Promise<DashboardInsight> {
         }
       | null
     const dataRaw = String(form?.data_preenchimento ?? '').trim()
+    const formularioId = String(acesso.formulario_id ?? '')
+    const colaboradorId = String(acesso.colaborador_id ?? '')
+    const groupKey = `${formularioId}|${colaboradorId}`
 
-    historico.push({
+    const row: DashboardHistoryRow = {
       dataPreenchimento: dataRaw || 'Não informado',
       setor: String(form?.setor ?? 'Não informado').trim(),
       gestorResponsavel: String(form?.gestor ?? 'Não informado').trim(),
@@ -74,13 +145,17 @@ export async function getDashboardInsights(): Promise<DashboardInsight> {
       tiposAcesso: tipos.length ? tipos.join(' | ') : 'Não informado',
       detalhamento:
         sistemaNome === 'Portal BI'
-          ? `${countPortalBiFromDetalhamento(
-              String(acesso.detalhamento ?? ''),
-            )}`
+          ? `${countPortalBiFromDetalhamento(String(acesso.detalhamento ?? ''))}`
           : String(acesso.detalhamento ?? 'Não informado').trim(),
       observacoesSistema: String(acesso.observacoes ?? acesso.rotina ?? '').trim() || 'Não informado',
-    })
+    }
+
+    const group = historicoGroups.get(groupKey) ?? []
+    group.push(row)
+    historicoGroups.set(groupKey, group)
   }
+
+  const historico = Array.from(historicoGroups.values()).map((group) => mergeHistoryGroup(group))
 
   return {
     totalFormularios,
@@ -113,12 +188,14 @@ function buildInsightsFromPayloads(payloads: AuditFormData[]): DashboardInsight 
     setorMap[payload.setor] = (setorMap[payload.setor] ?? 0) + 1
 
     ;(payload.colaboradores ?? []).forEach((colaborador) => {
+      const fragments: DashboardHistoryRow[] = []
+
       colaborador.sistemas.forEach((sistema) => {
         sistemaMap[sistema.sistema] = (sistemaMap[sistema.sistema] ?? 0) + 1
         sistema.tipoAcesso.forEach((tipo) => {
           tipoMap[tipo] = (tipoMap[tipo] ?? 0) + 1
         })
-        historico.push({
+        fragments.push({
           dataPreenchimento: payload.dataPreenchimento || 'Não informado',
           setor: payload.setor || 'Não informado',
           gestorResponsavel: payload.gestorResponsavel || 'Não informado',
@@ -141,6 +218,10 @@ function buildInsightsFromPayloads(payloads: AuditFormData[]): DashboardInsight 
           observacoesSistema: sistema.observacoesSistema?.trim() || 'Não informado',
         })
       })
+
+      if (fragments.length > 0) {
+        historico.push(mergeHistoryGroup(fragments))
+      }
     })
   })
 

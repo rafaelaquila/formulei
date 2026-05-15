@@ -185,13 +185,15 @@ export function DashboardPage() {
                       <th>Sistema</th>
                       <th>Unidade</th>
                       <th>Tipos de acesso</th>
-                      <th>Qunatidade BI</th>
+                      <th>Quantidade BI</th>
                       <th>Observações</th>
                     </tr>
                   </thead>
                   <tbody>
                     {filteredHistory.map((row, index) => (
-                      <tr key={`${row.colaborador}-${row.sistema}-${index}`}>
+                      <tr
+                        key={`${row.dataPreenchimento}-${row.colaborador}-${row.emailRespondente}-${index}`}
+                      >
                         <td>{row.dataPreenchimento}</td>
                         <td>{row.setor}</td>
                         <td>{row.gestorResponsavel}</td>
