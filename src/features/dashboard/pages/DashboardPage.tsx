@@ -1,26 +1,13 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
-import {
-  Bar,
-  BarChart,
-  CartesianGrid,
-  Cell,
-  Pie,
-  PieChart,
-  ResponsiveContainer,
-  Tooltip,
-  XAxis,
-  YAxis,
-} from 'recharts'
 import { getDashboardInsights } from '@/features/dashboard/api/dashboard.repository'
 import { logoutDashboard } from '@/features/dashboard/auth/dashboard-session'
 import { DashboardAside } from '@/features/dashboard/components/DashboardAside'
+import { DashboardInsightsCharts } from '@/features/dashboard/components/DashboardInsightsCharts'
 import { exportCsv } from '@/shared/lib/export-csv'
 import type { DashboardHistoryRow, DashboardInsight } from '@/shared/types/audit'
 import { AppFooter } from '@/shared/ui/Footer'
 import { Card } from '@/shared/ui/ui'
-
-const PIE_COLORS = ['#0F172A', '#334155', '#64748B', '#94A3B8', '#CBD5E1']
 
 const HISTORY_CELL_PREVIEW_LENGTH = 30
 
@@ -128,53 +115,7 @@ export function DashboardPage() {
             </Card>
           </div>
 
-          <div className="chart-grid">
-            <Card title="Sistemas mais utilizados">
-              <ResponsiveContainer width="100%" height={260}>
-                <BarChart data={insights.sistemasMaisUtilizados}>
-                  <CartesianGrid strokeDasharray="3 3" />
-                  <XAxis dataKey="sistema" />
-                  <YAxis allowDecimals={false} />
-                  <Tooltip />
-                  <Bar dataKey="total" fill="#0F172A" />
-                </BarChart>
-              </ResponsiveContainer>
-            </Card>
-
-            <Card title="Tipos de acesso mais comuns">
-              <ResponsiveContainer width="100%" height={260}>
-                <PieChart>
-                  <Pie
-                    data={insights.tiposAcessoComuns}
-                    nameKey="tipo"
-                    dataKey="total"
-                    outerRadius={90}
-                    label
-                  >
-                    {insights.tiposAcessoComuns.map((item, index) => (
-                      <Cell
-                        key={`${item.tipo}-${index}`}
-                        fill={PIE_COLORS[index % PIE_COLORS.length]}
-                      />
-                    ))}
-                  </Pie>
-                  <Tooltip />
-                </PieChart>
-              </ResponsiveContainer>
-            </Card>
-          </div>
-
-          <Card title="Acessos por setor">
-            <ResponsiveContainer width="100%" height={280}>
-              <BarChart data={insights.acessosPorSetor}>
-                <CartesianGrid strokeDasharray="3 3" />
-                <XAxis dataKey="setor" />
-                <YAxis allowDecimals={false} />
-                <Tooltip />
-                <Bar dataKey="total" fill="#334155" />
-              </BarChart>
-            </ResponsiveContainer>
-          </Card>
+          <DashboardInsightsCharts insights={insights} />
 
           <Card title="Histórico de cadastros">
             <div className="field">
