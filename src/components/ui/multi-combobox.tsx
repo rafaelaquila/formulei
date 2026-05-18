@@ -20,6 +20,10 @@ export interface MultiComboboxOption {
   description?: string
 }
 
+export interface MultiComboboxEmptyContext {
+  search: string
+}
+
 export interface MultiComboboxProps {
   options: MultiComboboxOption[]
   values: string[]
@@ -27,6 +31,8 @@ export interface MultiComboboxProps {
   placeholder?: string
   searchPlaceholder?: string
   emptyText?: string
+  /** Conteúdo exibido quando a busca não retorna opções (ex.: cadastrar colaborador). */
+  renderEmpty?: (context: MultiComboboxEmptyContext) => React.ReactNode
   disabled?: boolean
   className?: string
 }
@@ -38,10 +44,12 @@ export function MultiCombobox({
   placeholder = 'Selecione...',
   searchPlaceholder = 'Buscar...',
   emptyText = 'Nenhum resultado.',
+  renderEmpty,
   disabled,
   className,
 }: MultiComboboxProps) {
   const [open, setOpen] = React.useState(false)
+  const [search, setSearch] = React.useState('')
 
   const labelByValue = React.useMemo(() => {
     const map = new Map<string, MultiComboboxOption>()
@@ -69,7 +77,13 @@ export function MultiCombobox({
 
   return (
     <div className="space-y-2">
-      <Popover open={open} onOpenChange={setOpen}>
+      <Popover
+        open={open}
+        onOpenChange={(next) => {
+          setOpen(next)
+          if (!next) setSearch('')
+        }}
+      >
         <PopoverTrigger asChild>
           <Button
             type="button"
@@ -87,9 +101,19 @@ export function MultiCombobox({
         </PopoverTrigger>
         <PopoverContent className="w-[min(100vw-2rem,520px)] max-w-[520px] p-0" align="start">
           <Command>
-            <CommandInput placeholder={searchPlaceholder} />
+            <CommandInput
+              placeholder={searchPlaceholder}
+              value={search}
+              onValueChange={setSearch}
+            />
             <CommandList>
-              <CommandEmpty>{emptyText}</CommandEmpty>
+              <CommandEmpty>
+                {renderEmpty ? (
+                  <div className="px-2 py-3">{renderEmpty({ search })}</div>
+                ) : (
+                  emptyText
+                )}
+              </CommandEmpty>
               <CommandGroup>
                 {options.map((opt) => {
                   const selected = values.includes(opt.value)

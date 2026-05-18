@@ -458,6 +458,53 @@ textarea::placeholder {
   border-bottom: 1px dotted rgba(15, 23, 42, 0.35);
 }
 
+.combobox-empty-register {
+  display: grid;
+  gap: 8px;
+  text-align: left;
+}
+
+.combobox-empty-message {
+  margin: 0;
+  font-size: var(--text-sm);
+  line-height: 1.45;
+  color: var(--secondary);
+}
+
+.combobox-empty-hint {
+  margin: 0;
+  font-size: var(--text-xs);
+  line-height: 1.4;
+  color: var(--neutral);
+}
+
+.register-collaborator-modal {
+  width: min(480px, 100%);
+}
+
+.register-collaborator-modal__intro {
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+}
+
+.register-collaborator-modal__icon {
+  display: grid;
+  place-items: center;
+  width: 40px;
+  height: 40px;
+  border-radius: 10px;
+  background: rgba(15, 23, 42, 0.08);
+  color: var(--primary);
+  flex-shrink: 0;
+}
+
+.form-error {
+  margin: 0;
+  font-size: var(--text-sm);
+  color: var(--danger);
+}
+
 .bi-review-cell {
   display: grid;
   gap: 6px;

@@ -1,9 +1,14 @@
+import { UserPlus } from 'lucide-react'
 import { EMPLOYMENT_TYPES, SYSTEM_SUGGESTIONS } from '@/shared/constants/audit'
 import { SystemAccessDetails } from '@/features/audit/components/SystemAccessDetails'
 import {
   listCollaborators,
   listSectors,
 } from '@/features/collaborators/api/collaborators.repository'
+import {
+  RegisterCollaboratorModal,
+  type CreatedCollaborator,
+} from '@/features/collaborators/components/RegisterCollaboratorModal'
 import { useAuditForm } from '@/features/audit/hooks/useAuditForm'
 import { MultiCombobox } from '@/components/ui/multi-combobox'
 import { AppFooter } from '@/shared/ui/Footer'
@@ -43,12 +48,15 @@ export function AuditFormPage() {
     handleSubmit,
     isLoading,
     toast,
+    showToast,
   } = useAuditForm()
   const [collaboratorOptions, setCollaboratorOptions] = useState<
     { value: string; label: string; description?: string }[]
   >([])
   const [sectorOptions, setSectorOptions] = useState<string[]>([])
   const [activeCollaboratorId, setActiveCollaboratorId] = useState<string | null>(null)
+  const [registerModalOpen, setRegisterModalOpen] = useState(false)
+  const [registerModalNome, setRegisterModalNome] = useState('')
 
   useEffect(() => {
     async function loadCollaboratorsAndSectors() {
@@ -87,6 +95,89 @@ export function AuditFormPage() {
         (option) =>
           option.description && normalizeText(option.description) === normalizeText(form.setor),
       )
+
+  function openRegisterModal(nome: string) {
+    if (!form.setor.trim()) {
+      showToast('Selecione o setor da auditoria antes de cadastrar um colaborador.', 'error')
+      return
+    }
+    setRegisterModalNome(nome.trim())
+    setRegisterModalOpen(true)
+  }
+
+  function handleCollaboratorCreated(created: CreatedCollaborator) {
+    const option = {
+      value: created.nome,
+      label: created.nome,
+      description: created.setor,
+    }
+    setCollaboratorOptions((current) => {
+      if (current.some((item) => normalizeText(item.value) === normalizeText(created.nome))) {
+        return current
+      }
+      return [...current, option].sort((a, b) => a.label.localeCompare(b.label))
+    })
+    if (!sectorOptions.some((s) => normalizeText(s) === normalizeText(created.setor))) {
+      setSectorOptions((current) => [...current, created.setor].sort((a, b) => a.localeCompare(b)))
+    }
+    const nextNames = Array.from(
+      new Set([...form.colaboradores.map((item) => item.nome), created.nome]),
+    )
+    setSelectedCollaboratorNames(nextNames)
+    setRegisterModalOpen(false)
+    showToast(`${created.nome} cadastrado e adicionado à seleção.`, 'success')
+  }
+
+  function renderCollaboratorEmpty({ search }: { search: string }) {
+    const query = search.trim()
+
+    if (!form.setor.trim()) {
+      return (
+        <p className="combobox-empty-message">
+          Selecione o setor da auditoria para listar os colaboradores disponíveis.
+        </p>
+      )
+    }
+
+    if (!query) {
+      return (
+        <div className="combobox-empty-register">
+          <p className="combobox-empty-message">
+            Nenhum colaborador cadastrado em <strong>{form.setor}</strong> ainda.
+          </p>
+          <Button
+            type="button"
+            variant="secondary"
+            className="mt-2 w-full"
+            onClick={() => openRegisterModal('')}
+          >
+            <UserPlus className="h-4 w-4" />
+            Cadastrar colaborador neste setor
+          </Button>
+        </div>
+      )
+    }
+
+    return (
+      <div className="combobox-empty-register">
+        <p className="combobox-empty-message">
+          Não encontramos <strong>&quot;{query}&quot;</strong> em{' '}
+          <strong>{form.setor}</strong>.
+        </p>
+        <p className="combobox-empty-hint">
+          Esse nome ainda não está no cadastro. Inclua o colaborador para seguir com a auditoria.
+        </p>
+        <Button
+          type="button"
+          className="mt-2 w-full"
+          onClick={() => openRegisterModal(query)}
+        >
+          <UserPlus className="h-4 w-4" />
+          Cadastrar &quot;{query}&quot;
+        </Button>
+      </div>
+    )
+  }
 
   return (
     <main className="page">
@@ -163,7 +254,8 @@ export function AuditFormPage() {
                 values={form.colaboradores.map((item) => item.nome)}
                 placeholder="Selecione os colaboradores"
                 searchPlaceholder="Buscar colaborador..."
-                emptyText="Nenhum colaborador encontrado para o setor selecionado."
+                disabled={!form.setor.trim()}
+                renderEmpty={renderCollaboratorEmpty}
                 onChange={setSelectedCollaboratorNames}
               />
             </Field>
@@ -338,6 +430,19 @@ export function AuditFormPage() {
           </Button>
         </div>
       </form>
+      <RegisterCollaboratorModal
+        open={registerModalOpen}
+        initialNome={registerModalNome}
+        defaultSetor={form.setor}
+        sectorOptions={
+          form.setor.trim() && !sectorOptions.includes(form.setor)
+            ? [...sectorOptions, form.setor].sort((a, b) => a.localeCompare(b))
+            : sectorOptions
+        }
+        onClose={() => setRegisterModalOpen(false)}
+        onCreated={handleCollaboratorCreated}
+      />
+
       {toast ? <Toast message={toast.message} type={toast.type} /> : null}
       <AppFooter />
     </main>
