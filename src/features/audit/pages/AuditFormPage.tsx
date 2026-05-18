@@ -97,10 +97,6 @@ export function AuditFormPage() {
       )
 
   function openRegisterModal(nome: string) {
-    if (!form.setor.trim()) {
-      showToast('Selecione o setor da auditoria antes de cadastrar um colaborador.', 'error')
-      return
-    }
     setRegisterModalNome(nome.trim())
     setRegisterModalOpen(true)
   }
@@ -130,20 +126,19 @@ export function AuditFormPage() {
 
   function renderCollaboratorEmpty({ search }: { search: string }) {
     const query = search.trim()
-
-    if (!form.setor.trim()) {
-      return (
-        <p className="combobox-empty-message">
-          Selecione o setor da auditoria para listar os colaboradores disponíveis.
-        </p>
-      )
-    }
+    const hasSetor = Boolean(form.setor.trim())
 
     if (!query) {
       return (
         <div className="combobox-empty-register">
           <p className="combobox-empty-message">
-            Nenhum colaborador cadastrado em <strong>{form.setor}</strong> ainda.
+            {hasSetor ? (
+              <>
+                Nenhum colaborador cadastrado em <strong>{form.setor}</strong> ainda.
+              </>
+            ) : (
+              <>Nenhum colaborador cadastrado no diretório ainda.</>
+            )}
           </p>
           <Button
             type="button"
@@ -152,7 +147,7 @@ export function AuditFormPage() {
             onClick={() => openRegisterModal('')}
           >
             <UserPlus className="h-4 w-4" />
-            Cadastrar colaborador neste setor
+            {hasSetor ? 'Cadastrar colaborador neste setor' : 'Cadastrar colaborador'}
           </Button>
         </div>
       )
@@ -161,11 +156,20 @@ export function AuditFormPage() {
     return (
       <div className="combobox-empty-register">
         <p className="combobox-empty-message">
-          Não encontramos <strong>&quot;{query}&quot;</strong> em{' '}
-          <strong>{form.setor}</strong>.
+          {hasSetor ? (
+            <>
+              Não encontramos <strong>&quot;{query}&quot;</strong> em{' '}
+              <strong>{form.setor}</strong>.
+            </>
+          ) : (
+            <>
+              Não encontramos <strong>&quot;{query}&quot;</strong> no cadastro de
+              colaboradores.
+            </>
+          )}
         </p>
         <p className="combobox-empty-hint">
-          Esse nome ainda não está no cadastro. Inclua o colaborador para seguir com a auditoria.
+          Esse nome ainda não está cadastrado. Inclua o colaborador para seguir com a auditoria.
         </p>
         <Button
           type="button"
@@ -252,9 +256,12 @@ export function AuditFormPage() {
               <MultiCombobox
                 options={filteredCollaboratorOptions}
                 values={form.colaboradores.map((item) => item.nome)}
-                placeholder="Selecione os colaboradores"
+                placeholder={
+                  form.setor.trim()
+                    ? 'Selecione os colaboradores do setor'
+                    : 'Selecione colaboradores (todos os setores)'
+                }
                 searchPlaceholder="Buscar colaborador..."
-                disabled={!form.setor.trim()}
                 renderEmpty={renderCollaboratorEmpty}
                 onChange={setSelectedCollaboratorNames}
               />
